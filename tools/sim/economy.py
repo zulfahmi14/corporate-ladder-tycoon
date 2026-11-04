@@ -37,6 +37,8 @@ UPGRADES = {
     "desk": (1.0e3, 12.0, None),     # x1.5 coworker income per level
 }
 
+FOUND_COMPANY_REQUIREMENT = 5.0e18  # CEO run earnings to "Found your own company"
+
 # --- Experience (prestige currency, never resets)
 XP_PER_PROMOTION_K = 10        # xp = floor(K * sqrt(run_earnings / requirement))
 XP_INCOME_BONUS = 0.02         # +2% all income per XP
