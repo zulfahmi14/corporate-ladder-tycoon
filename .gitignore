@@ -1,0 +1,21 @@
+# Godot
+.godot/
+*.import.tmp
+build/
+android/build/
+export_credentials.cfg
+
+# Secrets: never commit
+*.keystore
+*.jks
+*.p12
+*.pem
+.env*
+secrets/
+
+# Tooling
+__pycache__/
+.venv/
+
+# Private planning docs (kept in private Claude Docs, never public)
+docs/
