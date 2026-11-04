@@ -32,7 +32,7 @@ description: Android build and release for Godot via GitHub Actions - upload key
 - Privacy policy URL (required with ads), Data safety form, content rating,
   ads declaration "contains ads", target audience 13+.
 - Personal accounts: closed test with 12+ testers for 14 continuous days per
-  new app before production (see MASTER_PLAN Facts for the verified date).
+  new app before production (see Master Plan Facts for the verified date).
 
 ## Tracks
 internal (owner only, instant) -> closed (testers, 14 days) -> production

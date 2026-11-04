@@ -5,7 +5,7 @@ description: Localization for English, Japanese and Indonesian - translation CSV
 
 # Localization
 
-- Languages: `en` (source), `ja`, `id` (confirm D-2 in MASTER_PLAN).
+- Languages: `en` (source), `ja`, `id` (confirm D-2 in the Master Plan).
 - All strings in `locale/translations.csv` (`keys,en,ja,id`), imported by Godot.
   Keys: `SCREEN_ELEMENT_PURPOSE` in CONSTANT_CASE, e.g. `UPGRADE_BUY_BUTTON`.
 - Code uses `tr("KEY")` only; placeholders with `tr("KEY").format({"n": x})`,

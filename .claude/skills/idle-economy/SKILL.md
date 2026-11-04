@@ -1,6 +1,6 @@
 ---
 name: idle-economy
-description: Idle game economy math for this project - big numbers, exponential cost curves, income per second, prestige formula, offline earnings cap, boosts and balance simulation. Use when writing DESIGN.md numbers, economy code, or tuning balance.
+description: Idle game economy math for this project - big numbers, exponential cost curves, income per second, prestige formula, offline earnings cap, boosts and balance simulation. Use when writing design doc numbers, economy code, or tuning balance.
 ---
 
 # Idle economy
@@ -10,7 +10,7 @@ description: Idle game economy math for this project - big numbers, exponential 
   switch to mantissa/exponent only if design exceeds 1e300.
 - Display via one formatter (see localization). Never show raw floats.
 
-## Standard formulas (tune constants in DESIGN.md, data tables in src/data)
+## Standard formulas (tune constants in the design doc, data tables in src/data)
 - Upgrade cost: `cost(n) = base * growth^n`, growth 1.07-1.15.
 - Buy k levels: `base * growth^n * (growth^k - 1) / (growth - 1)`.
 - Max affordable: `floor(log(money*(g-1)/(base*g^n) + 1) / log(g))`.
@@ -31,6 +31,6 @@ description: Idle game economy math for this project - big numbers, exponential 
 ## Simulation is mandatory
 - `tools/sim/` script models an active + idle player (taps/sec, check-ins
   per day, greedy cheapest-ROI purchase) and prints time-to-rank table.
-- Run it on every numbers change and paste the table into DESIGN.md.
+- Run it on every numbers change and paste the table into the design doc.
 - Core formulas live in `src/core` and are shared by game and sim (or
   mirrored with a test asserting identical outputs).

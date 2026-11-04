@@ -8,9 +8,9 @@ description: Supply-chain and vulnerability checks for every dependency (Godot b
 ## Intake checklist (run for EVERY new or updated dependency)
 1. Need: can 30 lines of our own code replace it? Prefer that.
 2. Source: official repo/release only. Record URL, exact version, and the
-   SHA-256/512 in `docs/DEPENDENCIES.md` (create it on first use).
+   SHA-256/512 in `DEPENDENCIES.md` (create it on first use).
 3. License: MIT, BSD, Apache-2.0, MPL-2.0, zlib, CC0 OK. **No GPL/AGPL/LGPL
-   code** (proprietary game). Record license in `docs/DEPENDENCIES.md`.
+   code** (proprietary game). Record license in `DEPENDENCIES.md`.
 4. Health: last release < 12 months, open security issues, maintainer count.
 5. Advisories: check GitHub Security Advisories / OSV for the package and
    version (`https://osv.dev`, `pip-audit` for Python tools).

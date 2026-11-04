@@ -6,7 +6,7 @@ description: Godot 4 conventions for this project - folder layout, autoloads, sc
 # Godot engine
 
 ## Version
-- One pinned Godot 4.x stable version, recorded in `docs/MASTER_PLAN.md` Facts
+- One pinned Godot 4.x stable version, recorded in the Master Plan doc Facts
   and in CI as `GODOT_VERSION`. Same version for editor, tests and export
   templates. Upgrade only in a dedicated PR (patch versions monthly).
 - No C#/.NET build: GDScript only (smaller APK, simpler CI).

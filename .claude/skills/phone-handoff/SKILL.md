@@ -25,6 +25,6 @@ Reply with: "<exact short reply>" or a screenshot of <screen>.
   also save in a password manager; never ask them to send secrets back in chat
   unless no other route exists.
 - Approvals: give a 5-line summary + link to the full file/PR.
-- After the owner replies, update `docs/MASTER_PLAN.md` (tick, Facts,
+- After the owner replies, update the Master Plan doc (tick, Facts,
   Decisions) in the same session.
 - Merging: give the PR link; owner merges in the GitHub app.

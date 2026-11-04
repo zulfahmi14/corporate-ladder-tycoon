@@ -6,8 +6,8 @@ description: Rules for keeping Claude sessions short and cheap on this repo - ta
 # Token economy
 
 ## Reading
-- Start from `docs/MASTER_PLAN.md` **Now** block (`sed -n '/^## Now/,/^---/p'`),
-  not the whole plan.
+- Start from the Master Plan doc **Now** section only (read the doc outline, then
+  that section; never the whole doc).
 - Use `grep -n` / `rg` to locate, then read only the line range needed.
 - Never re-read a file you just wrote or edited.
 - Do not dump generated files, lockfiles, `.import`, `.tscn` bulk or CI logs;

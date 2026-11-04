@@ -9,7 +9,7 @@ description: AdMob integration rules for this game - rewarded and interstitial p
 | Type | Trigger | Reward / rule |
 | --- | --- | --- |
 | Rewarded | "2x income" button | 2x all income for 30 min; stacking extends up to 2 h max |
-| Rewarded | Overtime boost | refill stamina / extra overtime multiplier (value in DESIGN.md) |
+| Rewarded | Overtime boost | refill stamina / extra overtime multiplier (value in the design doc) |
 | Rewarded | Offline return popup | doubles offline earnings for that return |
 | Interstitial | After a promotion screen is dismissed | only if >= 5 min since last interstitial AND player has played >= 10 min total AND not within 3 min of a rewarded ad |
 | Banner | none | never |
@@ -40,4 +40,4 @@ description: AdMob integration rules for this game - rewarded and interstitial p
 
 ## Plugin
 Pinned Godot 4 Android AdMob plugin (see dependency-security; candidate in
-MASTER_PLAN Facts). Review its manifest permissions before adding.
+Master Plan Facts). Review its manifest permissions before adding.

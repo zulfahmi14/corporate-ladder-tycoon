@@ -6,12 +6,13 @@ code; the owner only does phone-sized steps.
 
 ## Every session
 
-1. Read `docs/MASTER_PLAN.md` **Now** block only (not the whole file unless
-   needed). Do that step.
+1. Read the **Now** section of the private Master Plan doc (Claude Docs,
+   owner-only): https://claude.ai/artifact/HFXEPmiGMfaXxZAyPm8Cnm
+   Read the outline first, then only the section needed. Do that step.
 2. Load the skill that matches the work (list below). Do not load all skills.
 3. Work on the branch named by the session; push; the owner merges PRs.
-4. Before finishing: tick the step, move the **Now** pointer, update Facts /
-   Decisions if anything changed, commit.
+4. Before finishing: tick the step in the doc, move the **Now** pointer,
+   update Facts / Decisions if anything changed.
 5. End the reply with the owner's next phone step, if any (`phone-handoff`).
 
 ## Skills (`.claude/skills/`)
@@ -30,6 +31,9 @@ code; the owner only does phone-sized steps.
 | Asking the owner for anything | `phone-handoff` |
 
 ## Hard rules
+
+- Plans, design docs, tester data and business notes stay private: in
+  Claude Docs or the gitignored `docs/` folder, never pushed (public repo).
 
 - Never commit secrets, keystores, real tester emails, or `.env` files.
 - Debug builds use AdMob **test IDs** only. Real IDs only in release config.

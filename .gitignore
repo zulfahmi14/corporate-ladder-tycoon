@@ -16,3 +16,6 @@ secrets/
 # Tooling
 __pycache__/
 .venv/
+
+# Private planning docs (kept in private Claude Docs, never public)
+docs/
