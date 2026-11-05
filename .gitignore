@@ -19,3 +19,6 @@ __pycache__/
 
 # Private planning docs (kept in private Claude Docs, never public)
 docs/
+
+# Godot generates these on import
+*.translation

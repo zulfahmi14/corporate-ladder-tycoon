@@ -1,11 +1,12 @@
 ---
 name: localization
-description: Localization for English, Japanese and Indonesian - translation CSV, tr() keys, number and yen formatting, Japanese font fallback, store listing translations. Use for any user-facing text.
+description: Localization (v1 English only; Japanese/Indonesian later) - translation CSV, tr() keys, number and yen formatting, Japanese font fallback, store listing translations. Use for any user-facing text.
 ---
 
 # Localization
 
-- Languages: `en` (source), `ja`, `id` (confirm D-2 in the Master Plan).
+- Languages: v1 ships `en` only (decision D-2). `ja` (then maybe `id`) come in
+  later updates, so everything below is set up now to make that a data-only change.
 - All strings in `locale/translations.csv` (`keys,en,ja,id`), imported by Godot.
   Keys: `SCREEN_ELEMENT_PURPOSE` in CONSTANT_CASE, e.g. `UPGRADE_BUY_BUTTON`.
 - Code uses `tr("KEY")` only; placeholders with `tr("KEY").format({"n": x})`,
