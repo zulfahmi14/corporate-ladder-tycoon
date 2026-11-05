@@ -1,0 +1,66 @@
+name: Setup Godot
+description: Download the pinned Godot editor and export templates, verify SHA-512, install, and import the project.
+
+# The single place where the Godot version and checksums are pinned.
+inputs:
+  version:
+    description: Godot version (no -stable suffix)
+    default: "4.7.2"
+  linux-sha512:
+    description: SHA-512 of the Linux editor zip (official SHA512-SUMS.txt)
+    default: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+  templates-sha512:
+    description: SHA-512 of the export templates (official SHA512-SUMS.txt)
+    default: ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Godot and export templates
+      id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/godot-dl
+        key: godot-${{ inputs.version }}-${{ inputs.templates-sha512 }}
+
+    - name: Download Godot
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        V: ${{ inputs.version }}
+      run: |
+        base="https://github.com/godotengine/godot/releases/download/${V}-stable"
+        mkdir -p ~/godot-dl && cd ~/godot-dl
+        curl -sSfL -o godot.zip "$base/Godot_v${V}-stable_linux.x86_64.zip"
+        curl -sSfL -o templates.tpz "$base/Godot_v${V}-stable_export_templates.tpz"
+
+    - name: Verify checksums and install
+      shell: bash
+      env:
+        V: ${{ inputs.version }}
+        LINUX_SHA512: ${{ inputs.linux-sha512 }}
+        TEMPLATES_SHA512: ${{ inputs.templates-sha512 }}
+      run: |
+        cd ~/godot-dl
+        echo "${LINUX_SHA512}  godot.zip" | sha512sum -c -
+        echo "${TEMPLATES_SHA512}  templates.tpz" | sha512sum -c -
+        unzip -q -o godot.zip -d "$RUNNER_TEMP/godot"
+        mv "$RUNNER_TEMP/godot/Godot_v${V}-stable_linux.x86_64" "$RUNNER_TEMP/godot/godot"
+        tpl=~/.local/share/godot/export_templates/${V}.stable
+        mkdir -p "$tpl"
+        unzip -q -o templates.tpz -d "$RUNNER_TEMP/tpl"
+        mv "$RUNNER_TEMP"/tpl/templates/* "$tpl/"
+        echo "$RUNNER_TEMP/godot" >> "$GITHUB_PATH"
+
+    - name: Point Godot at the runner's Android SDK and Java 17
+      shell: bash
+      run: |
+        mkdir -p ~/.config/godot
+        for v in 4 4.7; do
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' \
+            "$ANDROID_SDK_ROOT" "$JAVA_HOME_17_X64" > ~/.config/godot/editor_settings-$v.tres
+        done
+
+    - name: Import project
+      shell: bash
+      run: godot --headless --path . --import
