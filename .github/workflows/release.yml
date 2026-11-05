@@ -1,0 +1,135 @@
+name: Release
+
+# Real release: run manually from main ("Run workflow", dry_run off).
+# Dry run: throwaway key, no secrets; also runs automatically when the
+# release pipeline files change on any branch, so it is tested before merge.
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Version name shown to players, e.g. 0.1.0
+        required: true
+        default: "0.1.0"
+      dry_run:
+        description: Test build with a throwaway key (no secrets used)
+        type: boolean
+        default: true
+  push:
+    paths:
+      - .github/workflows/release.yml
+      - .github/actions/setup-godot/**
+      - export_presets.cfg
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MIN_TARGET_SDK: "36" # Google Play: new apps and updates must target API 36 since 2026-08-31
+  DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run }}
+  VERSION_NAME: ${{ inputs.version_name || '0.0.0' }}
+
+jobs:
+  aab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Real releases only from main
+        if: env.DRY_RUN != 'true' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Real releases must be run from main."
+          exit 1
+
+      - name: Validate version name
+        run: |
+          [[ "$VERSION_NAME" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || {
+            echo "::error::version_name must look like 1.2.3"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-godot
+
+      - name: Unit tests
+        run: godot --headless --path . -s tests/run_tests.gd
+
+      - name: Stamp version
+        run: |
+          code=$(( GITHUB_RUN_NUMBER + 100 ))
+          sed -i -E "/^\[preset\.1\.options\]/,/^\[/ { s/^version\/code=.*/version\/code=${code}/; s/^version\/name=.*/version\/name=\"${VERSION_NAME}\"/ }" export_presets.cfg
+          grep -A40 '^\[preset.1.options\]' export_presets.cfg | grep -E '^version/'
+          echo "VERSION_CODE=$code" >> "$GITHUB_ENV"
+
+      - name: Signing key (throwaway for dry run)
+        if: env.DRY_RUN == 'true'
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/upload.keystore" -storetype PKCS12 \
+            -storepass dryrun-only -alias upload -keyalg RSA -keysize 4096 -validity 10000 \
+            -dname "CN=Dry Run" > /dev/null
+          {
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/upload.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=upload"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=dryrun-only"
+          } >> "$GITHUB_ENV"
+
+      - name: Signing key (upload key from secrets)
+        if: env.DRY_RUN != 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.UPLOAD_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Secret UPLOAD_KEYSTORE_B64 is missing (step 4.2)."; exit 1
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
+
+      - name: Export signed AAB
+        env:
+          SECRET_USER: ${{ env.DRY_RUN != 'true' && secrets.UPLOAD_KEY_ALIAS || '' }}
+          SECRET_PASSWORD: ${{ env.DRY_RUN != 'true' && secrets.UPLOAD_KEYSTORE_PASSWORD || '' }}
+        run: |
+          if [ "$DRY_RUN" != "true" ]; then
+            export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$SECRET_USER"
+            export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$SECRET_PASSWORD"
+          fi
+          mkdir -p build
+          out="build/corporate-ladder-tycoon-${VERSION_NAME}-${VERSION_CODE}.aab"
+          # --install-android-build-template only works together with an export
+          # (on its own it opens the editor and never exits).
+          timeout 20m godot --headless --path . --install-android-build-template \
+            --export-release "Android Release AAB" "$out" 2>&1 | tee export.log
+          test -s "$out"
+          echo "AAB=$out" >> "$GITHUB_ENV"
+
+      - name: Check target SDK meets Play minimum
+        run: |
+          found=$(grep -rhoE 'android:targetSdkVersion="[0-9]+"' android/build/build/intermediates \
+            | grep -oE '[0-9]+' | sort -n | tail -1)
+          echo "targetSdkVersion=${found:-not found}"
+          [ -n "$found" ] && [ "$found" -ge "$MIN_TARGET_SDK" ]
+
+      - name: Verify signature and print upload certificate
+        run: |
+          jarsigner -verify "$AAB" | tee verify.log
+          grep -q "jar verified" verify.log
+          keytool -printcert -jarfile "$AAB" | grep -E "Owner:|SHA256:"
+
+      - name: Remove key material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.keystore"
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: aab-${{ env.DRY_RUN == 'true' && 'dry-run' || 'release' }}-${{ env.VERSION_NAME }}-${{ env.VERSION_CODE }}
+          path: ${{ env.AAB }}
+          retention-days: ${{ env.DRY_RUN == 'true' && 1 || 3 }}
+          if-no-files-found: error
