@@ -39,7 +39,7 @@ env:
 jobs:
   aab:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - name: Real releases only from main
         if: env.DRY_RUN != 'true' && github.ref != 'refs/heads/main'
@@ -60,11 +60,6 @@ jobs:
 
       - name: Unit tests
         run: godot --headless --path . -s tests/run_tests.gd
-
-      - name: Install Android build template (Gradle build is required for AAB)
-        run: |
-          godot --headless --path . --install-android-build-template
-          test -f android/build/build.gradle
 
       - name: Stamp version
         run: |
@@ -107,7 +102,10 @@ jobs:
           fi
           mkdir -p build
           out="build/corporate-ladder-tycoon-${VERSION_NAME}-${VERSION_CODE}.aab"
-          godot --headless --path . --export-release "Android Release AAB" "$out" 2>&1 | tee export.log
+          # --install-android-build-template only works together with an export
+          # (on its own it opens the editor and never exits).
+          timeout 20m godot --headless --path . --install-android-build-template \
+            --export-release "Android Release AAB" "$out" 2>&1 | tee export.log
           test -s "$out"
           echo "AAB=$out" >> "$GITHUB_ENV"
 
