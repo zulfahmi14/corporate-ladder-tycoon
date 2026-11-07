@@ -31,6 +31,12 @@ constants = {
     "rank_income_mult": [r[2] for r in E.RANKS],
     "coworker_costs": [c[1] for c in E.COWORKERS],
     "coworker_income": [c[2] for c in E.COWORKERS],
+    "minigame_keys": [m[0] for m in E.MINIGAMES],
+    "minigame_unlock_rank": [m[1] for m in E.MINIGAMES],
+    "minigame_base_seconds": [m[2] for m in E.MINIGAMES],
+    "minigame_difficulty_mult": list(E.MINIGAME_DIFFICULTY_MULT),
+    "minigame_cooldown_s": E.MINIGAME_COOLDOWN_S,
+    "minigame_tap_equiv_per_s": E.MINIGAME_TAP_EQUIV_PER_S,
 }
 with open(OUT, "w") as f:
     json.dump({"constants": constants, "cases": cases}, f, indent=1)

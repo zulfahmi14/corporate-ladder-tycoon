@@ -8,7 +8,10 @@ import sys
 
 import economy as E
 
-TAPS_PER_S = 1.5          # average while a session is open (taps half the time)
+TAPS_PER_S = 1.5
+MINIGAME_PLAY_S = 25       # active seconds one mini game takes
+MINIGAME_DIFFICULTY = 1    # typical player: Normal
+MINIGAME_SCORE = 0.75      # typical score          # average while a session is open (taps half the time)
 DAY = [                   # (start hour, active minutes): two commutes + two peeks
     (8.0, 15), (12.5, 2), (18.5, 15), (22.0, 2),
 ]
@@ -26,6 +29,8 @@ class Player:
         self.nomikai_buff = 0.0
         self.next_nomikai = random.uniform(*E.NOMIKAI_EVERY_ACTIVE_S)
         self.active_s = 0.0
+        self.minigame_ready_at = {}  # key -> absolute seconds
+        self.now_s = 0.0
 
     def reset_run(self):
         self.money = 0.0
@@ -128,6 +133,27 @@ class Player:
             self.nomikai_buff = E.NOMIKAI_BUFF_S
             self.next_nomikai = self.active_s + random.uniform(*E.NOMIKAI_EVERY_ACTIVE_S)
 
+    def minigame_basis(self):
+        return self.coworker_ps() + E.MINIGAME_TAP_EQUIV_PER_S * self.tap_value()
+
+    def play_minigames(self, use=True):
+        """Plays every unlocked mini game whose cooldown is over; returns seconds spent."""
+        if not use:
+            return 0
+        spent = 0
+        for key, rank, base_s in E.MINIGAMES:
+            if rank > self.rank or self.minigame_ready_at.get(key, 0) > self.now_s + spent:
+                continue
+            reward = (self.minigame_basis() * base_s
+                      * E.MINIGAME_DIFFICULTY_MULT[MINIGAME_DIFFICULTY] * MINIGAME_SCORE)
+            if self.ad_2x_left > 0:
+                reward *= E.AD_2X_MULT
+            # Coworkers keep earning while the player is in the mini game.
+            self.earn(reward + self.coworker_ps() * MINIGAME_PLAY_S)
+            spent += MINIGAME_PLAY_S
+            self.minigame_ready_at[key] = self.now_s + spent + E.MINIGAME_COOLDOWN_S
+        return spent
+
     def offline(self, seconds):
         self.stamina = min(E.STAMINA_MAX, self.stamina + seconds * E.STAMINA_REGEN_PER_S)
         capped = min(seconds, E.offline_cap_s(self.rank, self.careers))
@@ -137,7 +163,7 @@ class Player:
         self.earn(gain)
 
 
-def run(ads: bool, days: int = 40, seed: int = 1, stop_rank: int = 99):
+def run(ads: bool, days: int = 40, seed: int = 1, stop_rank: int = 99, minigames: bool = True):
     random.seed(seed)
     p = Player(ads)
     log = [("Intern", 0.0, 0.0, 0)]
@@ -153,8 +179,17 @@ def run(ads: bool, days: int = 40, seed: int = 1, stop_rank: int = 99):
                 p.ad_2x_left = E.AD_2X_DURATION_S     # one 2x ad per commute
                 if p.stamina < E.STAMINA_MAX:          # one overtime-boost ad
                     p.stamina, p.overtime, p.ot_ad = E.STAMINA_MAX, True, True
-            for s in range(minutes * 60):
+            s = 0
+            while s < minutes * 60:
+                p.now_s = t_h * 3600 + s
+                if s % 10 == 0:
+                    played = p.play_minigames(minigames)
+                    if played:
+                        s += played
+                        p.active_s += played
+                        continue
                 p.tick()
+                s += 1
                 if s % 10 == 0:
                     p.shop()
                     p.try_promote(log, (t_h + s / 3600) / 24)
@@ -167,7 +202,7 @@ def run(ads: bool, days: int = 40, seed: int = 1, stop_rank: int = 99):
 
 if __name__ == "__main__":
     ads = "--ads" in sys.argv
-    log, p = run(ads)
+    log, p = run(ads, minigames="--no-minigames" not in sys.argv)
     if "--csv" in sys.argv:
         print("rank,day,active_min,xp")
         for name, day, mins, xp in log:

@@ -18,11 +18,14 @@ var last_seen_unix: float = 0.0
 var installed_unix: float = 0.0
 var last_interstitial_unix: float = 0.0
 var last_rewarded_unix: float = 0.0
+var minigame_last_play: Array[float] = []
 var sound_on: bool = true
 var music_on: bool = true
 
 
 func _init() -> void:
+	minigame_last_play.resize(MinigameData.KEYS.size())
+	minigame_last_play.fill(0.0)
 	reset_run()
 
 
@@ -57,6 +60,7 @@ func to_dict() -> Dictionary:
 		"installed_unix": installed_unix,
 		"last_interstitial_unix": last_interstitial_unix,
 		"last_rewarded_unix": last_rewarded_unix,
+		"minigame_last_play": minigame_last_play.duplicate(),
 		"sound_on": sound_on,
 		"music_on": music_on,
 	}
@@ -84,6 +88,10 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	s.installed_unix = _num(data, "installed_unix", 0.0, 0.0, INF)
 	s.last_interstitial_unix = _num(data, "last_interstitial_unix", 0.0, 0.0, INF)
 	s.last_rewarded_unix = _num(data, "last_rewarded_unix", 0.0, 0.0, INF)
+	var raw_plays: Variant = data.get("minigame_last_play", [])
+	if raw_plays is Array:
+		for i: int in mini(raw_plays.size(), s.minigame_last_play.size()):
+			s.minigame_last_play[i] = _clean(raw_plays[i], 0.0, 0.0, INF)
 	s.sound_on = _flag(data, "sound_on", true)
 	s.music_on = _flag(data, "music_on", true)
 	return s

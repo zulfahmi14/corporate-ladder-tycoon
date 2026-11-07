@@ -1,7 +1,9 @@
 keys,en
 MAIN_TAP_BUTTON,Work!
 MAIN_INCOME_PER_SEC,{amount} / sec
-MAIN_HIRE_BUTTON,Hire {name} ({cost})
+MAIN_HIRE_BUTTON,Hire {name} x{owned} ({cost})
+MAIN_MINIGAMES_BUTTON,Mini games
+MAIN_PROMOTE_BUTTON,Get promoted to {rank}!
 RANK_INTERN,Intern
 RANK_STAFF,Staff
 RANK_SECTION_CHIEF,Section Chief
@@ -16,3 +18,50 @@ COWORKER_SALES_ACE,Sales ace
 COWORKER_SYSTEMS_ENGINEER,Systems engineer
 COWORKER_CONSULTANT,Consultant
 COWORKER_BOARD_ADVISOR,Board advisor
+BACK_BUTTON,Back
+COLLECT_BUTTON,Collect
+MINIGAMES_TITLE,Mini games
+DIFFICULTY_EASY,Easy
+DIFFICULTY_NORMAL,Normal
+DIFFICULTY_HARD,Hard
+MINIGAME_LOCKED,Unlocks at {rank}
+MINIGAME_COOLDOWN,Ready again in {time}
+MINIGAME_RESULT,"Score {score}%
+You earned {amount}"
+MINIGAME_STATUS_TIME_SCORE,Time {time}s · Score {score}
+MINIGAME_STATUS_PROGRESS,{n} / {total} · Correct {score}
+MINIGAME_HANKO,Hanko Stamp
+MINIGAME_HANKO_HOW,Stamp the approved documents. Leave the rejected ones alone!
+HANKO_GOOD_DOC,Approved
+HANKO_BAD_DOC,Rejected
+MINIGAME_INBOX,Inbox Sort
+MINIGAME_INBOX_HOW,Is it work or spam? Decide before the timer runs out.
+INBOX_WORK_BUTTON,Work
+INBOX_SPAM_BUTTON,Spam
+INBOX_WORK_1,Re: Q3 budget review at 10:00
+INBOX_WORK_2,Client meeting moved to Thursday
+INBOX_WORK_3,Please approve my leave request
+INBOX_WORK_4,Minutes from this morning's meeting
+INBOX_WORK_5,Updated sales report attached
+INBOX_WORK_6,Reminder: timesheets due Friday
+INBOX_SPAM_1,You won a free cruise!!!
+INBOX_SPAM_2,Prince needs your bank details
+INBOX_SPAM_3,Miracle diet: lose 10 kg overnight
+INBOX_SPAM_4,Your account is locked. Click here
+INBOX_SPAM_5,Cheap watches 90% off
+INBOX_SPAM_6,Earn ¥1M a day from home
+MINIGAME_EXPENSE,Expense Report
+MINIGAME_EXPENSE_HOW,Add up the receipts and pick the right total.
+MINIGAME_PITCH,Pitch Timing
+MINIGAME_PITCH_HOW,Stop the needle inside the green zone.
+PITCH_STOP_BUTTON,Pitch!
+PITCH_HIT,Nailed it!
+PITCH_MISS,Missed...
+MINIGAME_BOARD,Board Meeting
+MINIGAME_BOARD_HOW,"Watch who speaks, then tap the departments in the same order."
+BOARD_SALES,Sales
+BOARD_HR,HR
+BOARD_IT,IT
+BOARD_FINANCE,Finance
+BOARD_WATCH,Round {n} / {total} · Watch...
+BOARD_YOUR_TURN,Your turn!

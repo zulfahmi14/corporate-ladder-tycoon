@@ -68,6 +68,20 @@ AD_2X_DURATION_S = 30 * 60
 AD_2X_MAX_STACK_S = 2 * 60 * 60
 
 
+# --- Mini games: (key, unlock rank, base reward seconds)
+# reward = (coworker income/s + 3 * tap value) * base_s * difficulty mult * score (0..1)
+MINIGAMES = [
+    ("hanko", 0, 30),     # Hanko Stamp: tap approved documents, skip rejected ones
+    ("inbox", 1, 45),     # Inbox Sort: work or spam
+    ("expense", 2, 60),   # Expense Report: quick sums
+    ("pitch", 3, 90),     # Pitch Timing: stop the needle in the zone
+    ("board", 4, 120),    # Board Meeting: repeat the sequence
+]
+MINIGAME_DIFFICULTY_MULT = (1.0, 2.0, 4.0)  # Easy, Normal, Hard
+MINIGAME_COOLDOWN_S = 5 * 60   # per game; real time, also passes while offline
+MINIGAME_TAP_EQUIV_PER_S = 3.0  # taps/s counted in the reward basis
+
+
 def coworker_cost(base: float, owned: int) -> float:
     return base * COWORKER_GROWTH ** owned
 

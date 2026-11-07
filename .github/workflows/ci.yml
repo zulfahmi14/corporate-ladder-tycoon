@@ -37,6 +37,14 @@ jobs:
         run: |
           gdformat --check src tests
           gdlint src tests
+      - name: Translations CSV has exactly 2 columns per row
+        run: |
+          python3 - <<'PY'
+          import csv, sys
+          bad = [r for r in csv.reader(open("locale/translations.csv", encoding="utf-8")) if len(r) != 2]
+          if bad:
+              sys.exit(f"Malformed rows (quote values that contain commas): {bad}")
+          PY
       - name: Balance sim runs
         run: python3 tools/sim/sim.py
       - name: Parity fixture is up to date with tools/sim/economy.py

@@ -25,3 +25,17 @@ func test_constants_and_formulas_match_python() -> void:
 		assert_near(ps, case["coworker_ps"], 1e-9, "ps %s" % case)
 		var tap: float = Economy.tap_value(case["coffee"], case["pc"], ps, perm)
 		assert_near(tap, case["tap"], 1e-9, "tap %s" % case)
+
+
+func test_minigame_constants_match_python() -> void:
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(FIXTURE))
+	var c: Dictionary = data["constants"]
+	assert_eq(MinigameData.KEYS.size(), (c["minigame_keys"] as Array).size())
+	for i: int in MinigameData.KEYS.size():
+		assert_eq(MinigameData.KEYS[i], c["minigame_keys"][i])
+		assert_eq(MinigameData.UNLOCK_RANK[i], int(c["minigame_unlock_rank"][i]))
+		assert_near(MinigameData.BASE_SECONDS[i], c["minigame_base_seconds"][i])
+	for i: int in MinigameData.DIFFICULTY_MULT.size():
+		assert_near(MinigameData.DIFFICULTY_MULT[i], c["minigame_difficulty_mult"][i])
+	assert_near(MinigameData.COOLDOWN_S, c["minigame_cooldown_s"])
+	assert_near(MinigameData.TAP_EQUIV_PER_S, c["minigame_tap_equiv_per_s"])
