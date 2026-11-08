@@ -14,6 +14,8 @@ func test_constants_and_formulas_match_python() -> void:
 		assert_eq(EconomyData.GOAL_COUNT[i], int(c["goal_count"][i]))
 		assert_near(EconomyData.HIRE_BASE_COST[i], c["hire_base_cost"][i])
 	assert_eq(EconomyData.LEVEL_INCOME.size(), (c["level_income"] as Array).size())
+	for i: int in EconomyData.FILL_S.size():
+		assert_near(EconomyData.FILL_S[i], c["fill_s"][i])
 	for i: int in EconomyData.LEVEL_INCOME.size():
 		assert_near(EconomyData.LEVEL_INCOME[i], c["level_income"][i])
 	var scalars: Dictionary = {
@@ -21,8 +23,8 @@ func test_constants_and_formulas_match_python() -> void:
 		"starting_team": EconomyData.STARTING_TEAM,
 		"actions_per_day": EconomyData.ACTIONS_PER_DAY,
 		"actions_ad_bonus": EconomyData.ACTIONS_AD_BONUS,
-		"bubble_active_cap_s": EconomyData.BUBBLE_ACTIVE_CAP_S,
-		"pc_cap_s_per_level": EconomyData.PC_CAP_S_PER_LEVEL,
+		"pc_fill_speedup": EconomyData.PC_FILL_SPEEDUP,
+		"fire_severance_s": EconomyData.FIRE_SEVERANCE_S,
 		"coffee_bonus": EconomyData.COFFEE_BONUS,
 		"desk_mult": EconomyData.DESK_MULT,
 		"xp_per_promotion": EconomyData.XP_PER_PROMOTION,

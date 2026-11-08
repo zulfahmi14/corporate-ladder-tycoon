@@ -73,7 +73,7 @@ TOAST_OFFLINE,Your team earned {amount} while you were away. Tap the bubbles!
 UPGRADES_TITLE,Upgrades
 UPGRADE_COFFEE,"Coffee Lv{level}: +10% income
 {cost}"
-UPGRADE_PC,"Faster PC Lv{level}: bubbles hold +15 s
+UPGRADE_PC,"Faster PC Lv{level}: bubbles fill 4% faster
 {cost}"
 UPGRADE_DESK,"Better desk Lv{level}: income x1.5
 {cost}"
@@ -90,3 +90,9 @@ LEVEL_DEPARTMENT_HEAD,Dept head
 LEVEL_EXECUTIVE,Executive
 LEVEL_VICE_PRESIDENT,Vice pres.
 LEVEL_BOARD_ADVISOR,Board advisor
+MAIN_WELCOME_BACK,Welcome back! Collect {amount}
+MAIN_FIRE_BUTTON,Office stuck: fire someone
+MAIN_FIRE_CANCEL,Cancel firing
+TOAST_OCCUPIED,That desk is taken. Move to an empty desk or merge with a twin.
+TOAST_FIRE_PICK,Tap a coworker to fire. Severance is shown in red.
+TOAST_FIRE_TOO_POOR,Not enough yen for that severance yet.

@@ -45,7 +45,7 @@ func test_merge_neighbours_levels_up_and_keeps_bubbles() -> void:
 	assert_eq(GameRules.desk_action(s, 0, 1), GameRules.DeskResult.MERGED)
 	assert_eq(s.board[1], 3)
 	assert_eq(s.board[0], 0)
-	assert_near(s.bubbles[1], 15.0)
+	assert_near(s.bubbles[1], 15.0, 1e-9, "stored yen carries over (below new capacity)")
 	assert_eq(s.actions_left, EconomyData.ACTIONS_PER_DAY - 1)
 
 
@@ -57,16 +57,16 @@ func test_merge_needs_neighbours() -> void:
 	assert_eq(s.actions_left, EconomyData.ACTIONS_PER_DAY, "failed merge costs nothing")
 
 
-func test_move_and_swap_cost_one_action() -> void:
+func test_move_costs_one_action_and_seats_never_swap() -> void:
 	var s := PlayerState.new()
 	s.board[0] = 1
 	s.board[5] = 3
 	assert_eq(GameRules.desk_action(s, 0, 10), GameRules.DeskResult.MOVED)
 	assert_eq(s.board[10], 1)
-	assert_eq(GameRules.desk_action(s, 10, 5), GameRules.DeskResult.SWAPPED)
-	assert_eq(s.board[5], 1)
-	assert_eq(s.board[10], 3)
-	assert_eq(s.actions_left, EconomyData.ACTIONS_PER_DAY - 2)
+	assert_eq(GameRules.desk_action(s, 10, 5), GameRules.DeskResult.OCCUPIED)
+	assert_eq(s.board[5], 3)
+	assert_eq(s.board[10], 1)
+	assert_eq(s.actions_left, EconomyData.ACTIONS_PER_DAY - 1)
 
 
 func test_no_actions_left_blocks_moves() -> void:
@@ -98,24 +98,72 @@ func test_actions_refill_on_new_day_and_ad_once_per_day() -> void:
 	assert_true(GameRules.can_buy_ad_actions(s))
 
 
-func test_bubbles_fill_to_cap_and_claim_pays() -> void:
+func test_bubble_fills_in_level_time_and_only_full_can_be_claimed() -> void:
 	var s := PlayerState.new()
-	s.board[0] = 1
+	s.board[0] = 3
+	var cap: float = Economy.level_income(3) * 60.0  # Senpai fills in 60 s
+	assert_near(GameRules.capacity(s, 0), cap)
+	GameRules.fill_bubbles(s, 30.0)
+	assert_near(GameRules.bubble_fraction(s, 0), 0.5)
+	assert_near(GameRules.claim(s, 0), 0.0, 1e-9, "half-full bubble cannot be claimed")
 	GameRules.fill_bubbles(s, 1000.0)
-	var cap: float = Economy.level_income(1) * EconomyData.BUBBLE_ACTIVE_CAP_S
-	assert_near(s.bubbles[0], cap)
+	assert_near(s.bubbles[0], cap, 1e-9, "a full bubble stops growing")
 	assert_near(GameRules.claim(s, 0), cap)
 	assert_near(s.yen, cap)
 	assert_near(s.bubbles[0], 0.0)
 
 
-func test_offline_fills_at_half_rate_up_to_cap() -> void:
+func test_faster_pc_shortens_fill_time() -> void:
+	assert_near(Economy.fill_seconds(3, 0), 60.0)
+	assert_near(Economy.fill_seconds(3, 10), 36.0)
+
+
+func test_away_time_fills_bubbles_once_and_pays_welcome_back_lump() -> void:
 	var s := PlayerState.new()
 	s.board[0] = 1
 	s.last_seen_unix = 1000.0
 	var added: float = GameRules.fill_offline(s, 1000.0 + 100000.0)
 	assert_near(added, 0.5 * 2.0 * 3600.0 * 0.5)
-	assert_near(GameRules.fill_offline(s, 0.0), 0.0, 1e-9, "clock moved back pays nothing")
+	assert_true(GameRules.bubble_full(s, 0))
+	assert_near(s.away_pending, added)
+	assert_near(GameRules.collect_away(s, true), added * 2.0)
+	assert_near(s.away_pending, 0.0)
+	s.last_seen_unix = 5000.0
+	assert_near(GameRules.fill_offline(s, 10.0), 0.0, 1e-9, "clock moved back pays nothing")
+
+
+func test_stuck_only_when_full_without_pairs() -> void:
+	var s := PlayerState.new()
+	for i: int in s.board.size():
+		s.board[i] = 1 + (i + int(i / 4.0)) % 2  # checkerboard of Lv1 and Lv2
+	assert_true(GameRules.is_stuck(s))
+	s.board[1] = 1  # now desk 0 and 1 are both Lv1 neighbours
+	assert_true(not GameRules.is_stuck(s))
+	s.board[1] = 2
+	s.board[19] = 0
+	assert_true(not GameRules.is_stuck(s), "an empty desk means a move is possible")
+
+
+func test_fire_only_when_stuck_and_charges_by_level() -> void:
+	var s := PlayerState.new()
+	s.board[0] = 1
+	s.yen = 1.0e9
+	assert_near(GameRules.fire(s, 0), -1.0, 1e-9, "not stuck: cannot fire")
+	for i: int in s.board.size():
+		s.board[i] = 1 + (i + int(i / 4.0)) % 2
+	assert_true(GameRules.fire_cost(s, 1) > GameRules.fire_cost(s, 0), "Lv2 costs more than Lv1")
+	var fee: float = GameRules.fire(s, 0)
+	assert_near(fee, Economy.level_income(1) * EconomyData.FIRE_SEVERANCE_S)
+	assert_eq(s.board[0], 0)
+	assert_near(s.yen, 1.0e9 - fee)
+
+
+func test_fire_needs_enough_yen() -> void:
+	var s := PlayerState.new()
+	for i: int in s.board.size():
+		s.board[i] = 1 + (i + int(i / 4.0)) % 2
+	assert_near(GameRules.fire(s, 0), -1.0)
+	assert_eq(s.board[0], 1)
 
 
 func test_promotion_needs_goal_and_resets_board() -> void:

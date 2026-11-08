@@ -44,19 +44,23 @@ STARTING_TEAM = 4  # free coworkers at the hire level, seated randomly at the st
 BOARD_COLS = 4
 BOARD_ROWS_BASE = 5
 
-# --- Desk actions (move, swap or merge cost 1); hiring and claiming are free
+# --- Desk actions (move or merge cost 1); hiring, claiming and firing are free
 ACTIONS_PER_DAY = 200
 ACTIONS_AD_BONUS = 50          # one rewarded ad per day
 ACTIONS_RESET_HOUR = 4         # local time
 
-# --- Bubbles: income waits on the desk until tapped
-BUBBLE_ACTIVE_CAP_S = 30.0     # while the app is open a bubble stops growing at 30 s of income
-PC_CAP_S_PER_LEVEL = 15.0      # Faster PC: +15 s per level
+# --- Bubbles: each desk fills a bubble of fixed size, then waits until tapped (D-12)
+# capacity = level income x fill seconds; production stops while a full bubble waits.
+FILL_S = [20, 30, 60, 90, 120, 180, 240, 300, 420, 600, 900, 1200]  # per level
+PC_FILL_SPEEDUP = 0.04         # Faster PC: bubbles fill 4% faster per level (max 10)
+
+# --- Firing: only when the office is stuck (full, no matching neighbours)
+FIRE_SEVERANCE_S = 600         # severance = 10 minutes of that coworker's income
 
 # --- Upgrades: (base cost, growth, max level)
 UPGRADES = {
     "coffee": (50.0, 1.9, None),   # +10% coworker income per level (additive)
-    "pc": (500.0, 4.0, 10),        # +15 s bubble capacity while open
+    "pc": (500.0, 4.0, 10),        # bubbles fill 4% faster per level
     "desk": (1.0e3, 12.0, None),   # x1.5 coworker income per level
 }
 COFFEE_BONUS = 0.10
@@ -133,8 +137,8 @@ def level_income(level: int) -> float:
     return LEVELS[level - 1][1]
 
 
-def bubble_cap_s(pc: int) -> float:
-    return BUBBLE_ACTIVE_CAP_S + PC_CAP_S_PER_LEVEL * pc
+def fill_seconds(level: int, pc: int) -> float:
+    return FILL_S[level - 1] * (1 - PC_FILL_SPEEDUP * pc)
 
 
 def offline_cap_s(rank: int, careers: int) -> float:

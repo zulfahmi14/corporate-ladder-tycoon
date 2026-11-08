@@ -11,6 +11,9 @@ var _income_label: Label
 var _goal_label: Label
 var _actions_label: Label
 var _promote_button: Button
+var _away_button: Button
+var _fire_button: Button
+var _fire_mode: bool = false
 var _hire_button: Button
 var _grid: GridContainer
 var _cells: Array[DeskCell] = []
@@ -38,8 +41,16 @@ func _ready() -> void:
 	MinigameView.paint(_promote_button, MinigameView.GOOD_COLOR)
 	_promote_button.pressed.connect(_on_promote)
 	page.add_child(_promote_button)
+	_away_button = MinigameView.make_button("", 120)
+	MinigameView.paint(_away_button, DeskCell.BUBBLE_COLOR)
+	_away_button.pressed.connect(_on_collect_away)
+	page.add_child(_away_button)
 	_actions_label = MinigameView.make_label("", 28)
 	page.add_child(_actions_label)
+	_fire_button = MinigameView.make_button("", 110)
+	MinigameView.paint(_fire_button, DeskCell.FIRE_COLOR)
+	_fire_button.pressed.connect(_on_fire_button)
+	page.add_child(_fire_button)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -100,7 +111,10 @@ func _rebuild_board_if_needed(size: int) -> void:
 
 func _on_desk_tapped(desk: int) -> void:
 	var s: PlayerState = GameState.state
-	if not GameRules.bubble_visible(s, desk):
+	if _fire_mode:
+		_fire_at(desk)
+		return
+	if not GameRules.bubble_full(s, desk):
 		return
 	var amount: float = GameRules.claim(s, desk)
 	_float_text(_cells[desk], "+" + NumberFormat.yen(amount))
@@ -119,6 +133,8 @@ func _on_desk_dropped(from: int, to: int) -> void:
 			_show_toast(tr("TOAST_NOT_NEIGHBORS"))
 		GameRules.DeskResult.MAX_LEVEL:
 			_show_toast(tr("TOAST_MAX_LEVEL"))
+		GameRules.DeskResult.OCCUPIED:
+			_show_toast(tr("TOAST_OCCUPIED"))
 	GameState.mark_dirty()
 
 
@@ -140,6 +156,33 @@ func _on_promote() -> void:
 			tr("TOAST_PROMOTED").format({"rank": tr(EconomyData.RANK_KEYS[GameState.state.rank])})
 		)
 		GameState.mark_dirty()
+
+
+func _on_collect_away() -> void:
+	var amount: float = GameRules.collect_away(GameState.state, false)
+	if amount > 0.0:
+		_float_text(_away_button, "+" + NumberFormat.yen(amount))
+		GameState.mark_dirty()
+
+
+func _on_fire_button() -> void:
+	_fire_mode = not _fire_mode
+	if _fire_mode:
+		_show_toast(tr("TOAST_FIRE_PICK"))
+	_refresh()
+
+
+func _fire_at(desk: int) -> void:
+	var s: PlayerState = GameState.state
+	if s.board[desk] == 0:
+		return
+	var fee: float = GameRules.fire(s, desk)
+	if fee < 0.0:
+		_show_toast(tr("TOAST_FIRE_TOO_POOR"))
+		return
+	_fire_mode = false
+	_float_text(_cells[desk], "-" + NumberFormat.yen(fee))
+	GameState.mark_dirty()
 
 
 func _on_offline_earned(amount: float) -> void:
@@ -204,13 +247,29 @@ func _refresh() -> void:
 		else tr("MAIN_HIRE_BUTTON").format({"cost": NumberFormat.yen(cost)})
 	)
 	_hire_button.disabled = full or cost > s.yen
+	_away_button.visible = s.away_pending > 0.0
+	_away_button.text = tr("MAIN_WELCOME_BACK").format({"amount": NumberFormat.yen(s.away_pending)})
+	var stuck: bool = GameRules.is_stuck(s)
+	if not stuck:
+		_fire_mode = false
+	_fire_button.visible = stuck
+	_fire_button.text = tr("MAIN_FIRE_CANCEL") if _fire_mode else tr("MAIN_FIRE_BUTTON")
 	var goal: int = EconomyData.GOAL_LEVEL[s.rank]
 	for desk: int in _cells.size():
 		var level: int = s.board[desk]
-		var bubble: String = (
-			"+" + NumberFormat.yen(s.bubbles[desk]) if GameRules.bubble_visible(s, desk) else ""
+		var ready: bool = GameRules.bubble_full(s, desk)
+		var bubble: String = "+" + NumberFormat.yen(s.bubbles[desk]) if ready else ""
+		var fire_text: String = ""
+		if _fire_mode and level > 0:
+			fire_text = "-" + NumberFormat.yen(GameRules.fire_cost(s, desk))
+		_cells[desk].show_state(
+			level,
+			bubble,
+			GameRules.bubble_fraction(s, desk),
+			_has_twin_neighbor(s, desk),
+			level >= goal,
+			fire_text
 		)
-		_cells[desk].show_state(level, bubble, _has_twin_neighbor(s, desk), level >= goal)
 
 
 func _refresh_goal(s: PlayerState) -> void:

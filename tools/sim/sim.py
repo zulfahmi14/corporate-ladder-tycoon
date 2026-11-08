@@ -9,7 +9,7 @@ import sys
 import economy as E
 
 DAY = [(8.0, 15), (12.5, 2), (18.5, 15), (22.0, 2)]  # (start hour, active minutes)
-CLAIM_EVERY_S = 8          # a player taps bubbles every few seconds
+CLAIM_EVERY_S = 5          # a player taps full bubbles every few seconds
 DECIDE_EVERY_S = 10        # hire / merge / upgrade checks
 MINIGAME_PLAY_S = 25
 MINIGAME_DIFFICULTY = 1
@@ -41,6 +41,7 @@ class Player:
         self.next_nomikai = rng.uniform(*E.NOMIKAI_EVERY_ACTIVE_S)
         self.minigame_ready_at = {}
         self.hire_times = {}
+        self.fires, self.fire_yen = 0, 0.0
         self.actions_left, self.actions_used_today, self.daily_used = E.ACTIONS_PER_DAY, 0, []
         self.reset_run()
 
@@ -64,16 +65,42 @@ class Player:
     def income_ps(self):
         return sum(self.desk_rate(i) for i in range(len(self.board)))
 
+    def capacity(self, i):
+        lv = self.board[i]
+        return E.level_income(lv) * self.mult() * E.FILL_S[lv - 1] if lv else 0.0
+
     def fill_active(self, seconds, boost):
-        cap_s = E.bubble_cap_s(self.lv["pc"])
         for i in range(len(self.board)):
-            r = self.desk_rate(i)
-            if r and self.bubbles[i] < r * cap_s:
-                self.bubbles[i] = min(r * cap_s, self.bubbles[i] + r * seconds * boost)
+            lv = self.board[i]
+            if not lv:
+                continue
+            cap = self.capacity(i)
+            speed = cap / E.fill_seconds(lv, self.lv["pc"])
+            self.bubbles[i] = min(cap, self.bubbles[i] + speed * seconds * boost)
 
     def claim(self):
-        self.yen += sum(self.bubbles)
-        self.bubbles = [0.0] * len(self.board)
+        for i in range(len(self.board)):
+            if self.board[i] and self.bubbles[i] >= self.capacity(i) - 1e-9:
+                self.yen += self.bubbles[i]
+                self.bubbles[i] = 0.0
+
+    def is_stuck(self):
+        size = len(self.board)
+        if 0 in self.board:
+            return False
+        return not any(self.board[n] == self.board[a] and self.board[a] < E.MAX_LEVEL
+                       for a in range(size) for n in neighbors(a, size))
+
+    def fire_if_stuck(self):
+        if not self.is_stuck():
+            return
+        a = min(range(len(self.board)), key=lambda i: self.board[i])
+        fee = E.level_income(self.board[a]) * self.mult() * E.FIRE_SEVERANCE_S
+        if self.yen >= fee:
+            self.yen -= fee
+            self.board[a], self.bubbles[a] = 0, 0.0
+            self.fires += 1
+            self.fire_yen += fee
 
     # --- board actions
     def spend_action(self):
@@ -100,9 +127,6 @@ class Player:
                         for n in neighbors(b, size):
                             if n != a and self.board[n] == 0:
                                 return ("move", a, n)
-                        for n in neighbors(b, size):
-                            if n != a and self.board[n] != level:
-                                return ("swap", a, n)
         return None
 
     def do_board(self):
@@ -112,15 +136,12 @@ class Player:
                 return
             kind, a, b = act
             if kind == "merge":
-                self.bubbles[b] += self.bubbles[a]
                 self.board[b] += 1
+                self.bubbles[b] = min(self.capacity(b), self.bubbles[b] + self.bubbles[a])
                 self.board[a], self.bubbles[a] = 0, 0.0
-            elif kind == "move":
+            else:
                 self.board[b], self.board[a] = self.board[a], 0
                 self.bubbles[b], self.bubbles[a] = self.bubbles[a], 0.0
-            else:
-                self.board[a], self.board[b] = self.board[b], self.board[a]
-                self.bubbles[a], self.bubbles[b] = self.bubbles[b], self.bubbles[a]
 
     # --- spending
     def shop(self):
@@ -199,8 +220,10 @@ class Player:
     def offline(self, seconds):
         self.stamina = min(E.STAMINA_MAX, self.stamina + seconds * E.STAMINA_REGEN_PER_S)
         t = min(seconds, E.offline_cap_s(self.rank, self.careers)) * E.OFFLINE_EFFICIENCY
+        self.yen += self.income_ps() * t * (2 if self.ads else 1)  # "Welcome back" lump
         for i in range(len(self.board)):
-            self.bubbles[i] += self.desk_rate(i) * t * (2 if self.ads else 1)
+            if self.board[i]:
+                self.bubbles[i] = self.capacity(i)
 
     def new_day(self):
         self.daily_used.append(self.actions_used_today)
@@ -232,6 +255,7 @@ def run(ads: bool, days: int = 40, seed: int = 1, stop_rank: int = 99, minigames
                 if s % DECIDE_EVERY_S == 0:
                     p.shop()
                     p.do_board()
+                    p.fire_if_stuck()
                     p.try_promote(log, (t_h + s / 3600) / 24)
                     if minigames:
                         played = p.play_minigames()
@@ -267,6 +291,7 @@ if __name__ == "__main__":
             med = gaps[len(gaps) // 2] if gaps else 0
             print(f"  {E.RANKS[r][0]:14} hires {len(times):3}  median gap {med:5.0f} s  "
                   f"90th pct gap {gaps[int(len(gaps) * 0.9)] if gaps else 0:5.0f} s (active time)")
+        print(f"fires {p.fires}, severance paid {p.fire_yen:.3g} yen")
         used = p.daily_used
         print(f"desk actions/day: median {sorted(used)[len(used) // 2]}, max {max(used)}, "
               f"limit {E.ACTIONS_PER_DAY}, days at limit {sum(u >= E.ACTIONS_PER_DAY for u in used)}")

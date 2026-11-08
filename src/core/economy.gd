@@ -48,9 +48,9 @@ static func upgrade_mult(coffee_level: int, desk_level: int) -> float:
 	return (1.0 + EconomyData.COFFEE_BONUS * coffee_level) * pow(EconomyData.DESK_MULT, desk_level)
 
 
-## How many seconds of income a bubble holds while the app is open.
-static func bubble_cap_s(pc_level: int) -> float:
-	return EconomyData.BUBBLE_ACTIVE_CAP_S + EconomyData.PC_CAP_S_PER_LEVEL * pc_level
+## Seconds to fill one bubble at [param level]; Faster PC shortens it 4% per level.
+static func fill_seconds(level: int, pc_level: int) -> float:
+	return EconomyData.FILL_S[level - 1] * (1.0 - EconomyData.PC_FILL_SPEEDUP * pc_level)
 
 
 static func offline_cap_s(rank: int, careers: int) -> float:

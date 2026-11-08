@@ -2,7 +2,7 @@ class_name GameRules
 extends RefCounted
 ## Actions that change a PlayerState. Pure: randomness comes in as an RNG, time as numbers.
 
-enum DeskResult { MERGED, MOVED, SWAPPED, NO_ACTIONS, NOT_NEIGHBORS, MAX_LEVEL, INVALID }
+enum DeskResult { MERGED, MOVED, OCCUPIED, NO_ACTIONS, NOT_NEIGHBORS, MAX_LEVEL, INVALID }
 
 
 static func perm_mult(s: PlayerState) -> float:
@@ -46,41 +46,97 @@ static func start_run(s: PlayerState, rng: RandomNumberGenerator) -> void:
 		_seat_random(s, rng, Economy.hire_level(s.rank))
 
 
-## While the app is open: each bubble grows until it holds bubble_cap_s of income.
+## Full size of the bubble at [param desk].
+static func capacity(s: PlayerState, desk: int) -> float:
+	var level: int = s.board[desk]
+	if level == 0:
+		return 0.0
+	return desk_rate(s, desk) * EconomyData.FILL_S[level - 1]
+
+
+## Bubbles fill toward their capacity, then stop until they are tapped.
 static func fill_bubbles(s: PlayerState, seconds: float) -> void:
-	var cap_s: float = Economy.bubble_cap_s(s.pc_level)
 	var boost: float = boost_mult(s)
 	for desk: int in s.board.size():
-		var rate: float = desk_rate(s, desk)
-		if rate > 0.0 and s.bubbles[desk] < rate * cap_s:
-			s.bubbles[desk] = minf(rate * cap_s, s.bubbles[desk] + rate * seconds * boost)
+		var level: int = s.board[desk]
+		if level == 0:
+			continue
+		var cap: float = capacity(s, desk)
+		var speed: float = cap / Economy.fill_seconds(level, s.pc_level)
+		s.bubbles[desk] = minf(cap, s.bubbles[desk] + speed * seconds * boost)
 
 
-## While the app was closed: bubbles fill at 50% up to the offline cap. Returns the total added.
-static func fill_offline(s: PlayerState, now_unix: float) -> float:
-	var elapsed: float = clampf(
-		now_unix - s.last_seen_unix, 0.0, Economy.offline_cap_s(s.rank, s.careers)
-	)
-	var total: float = 0.0
-	for desk: int in s.board.size():
-		var add: float = desk_rate(s, desk) * elapsed * EconomyData.OFFLINE_EFFICIENCY
-		s.bubbles[desk] += add
-		total += add
-	return total
+static func bubble_full(s: PlayerState, desk: int) -> bool:
+	return s.board[desk] > 0 and s.bubbles[desk] >= capacity(s, desk) * 0.9999
 
 
-static func bubble_visible(s: PlayerState, desk: int) -> bool:
-	return (
-		s.bubbles[desk] > 0.0 and s.bubbles[desk] >= desk_rate(s, desk) * EconomyData.BUBBLE_SHOW_S
-	)
+## 0..1 for the progress bar under each coworker.
+static func bubble_fraction(s: PlayerState, desk: int) -> float:
+	var cap: float = capacity(s, desk)
+	return clampf(s.bubbles[desk] / cap, 0.0, 1.0) if cap > 0.0 else 0.0
 
 
-## Tapping a desk claims its bubble; returns the amount (0 if nothing to claim).
+## Tapping a full bubble collects it; a partly filled one cannot be collected yet.
 static func claim(s: PlayerState, desk: int) -> float:
+	if not bubble_full(s, desk):
+		return 0.0
 	var amount: float = s.bubbles[desk]
 	s.bubbles[desk] = 0.0
 	earn(s, amount)
 	return amount
+
+
+## Time away: every bubble fills (once), and 50% of income for the capped time
+## waits in away_pending for the "Welcome back" button. Returns the amount added.
+static func fill_offline(s: PlayerState, now_unix: float) -> float:
+	var elapsed: float = clampf(
+		now_unix - s.last_seen_unix, 0.0, Economy.offline_cap_s(s.rank, s.careers)
+	)
+	if elapsed <= 0.0:
+		return 0.0
+	var amount: float = income_ps(s) * elapsed * EconomyData.OFFLINE_EFFICIENCY
+	s.away_pending += amount
+	fill_bubbles(s, elapsed)
+	return amount
+
+
+static func collect_away(s: PlayerState, doubled: bool) -> float:
+	var amount: float = s.away_pending * (2.0 if doubled else 1.0)
+	s.away_pending = 0.0
+	earn(s, amount)
+	return amount
+
+
+## Stuck: every desk is taken and no neighbouring pair can merge.
+static func is_stuck(s: PlayerState) -> bool:
+	var size: int = s.board.size()
+	for desk: int in size:
+		var level: int = s.board[desk]
+		if level == 0:
+			return false
+		if level < EconomyData.MAX_LEVEL:
+			for n: int in Economy.neighbors(desk, size):
+				if s.board[n] == level:
+					return false
+	return true
+
+
+static func fire_cost(s: PlayerState, desk: int) -> float:
+	return desk_rate(s, desk) * EconomyData.FIRE_SEVERANCE_S
+
+
+## Fires the coworker at [param desk] when the office is stuck. Returns the
+## severance paid, or -1 if not stuck, empty desk, or not enough yen.
+static func fire(s: PlayerState, desk: int) -> float:
+	if not is_stuck(s) or s.board[desk] == 0:
+		return -1.0
+	var fee: float = fire_cost(s, desk)
+	if fee > s.yen:
+		return -1.0
+	s.yen -= fee
+	s.board[desk] = 0
+	s.bubbles[desk] = 0.0
+	return fee
 
 
 static func free_desks(s: PlayerState) -> Array[int]:
@@ -123,8 +179,8 @@ static func grant_ad_actions(s: PlayerState) -> void:
 		s.actions_left += EconomyData.ACTIONS_AD_BONUS
 
 
-## Drag from one desk to another: move to an empty desk, merge with an identical
-## neighbour, or swap seats. Each costs one desk action.
+## Drag from one desk to another: move to an empty desk or merge with an identical
+## neighbour (each costs one desk action). Seats never swap.
 static func desk_action(s: PlayerState, from: int, to: int) -> DeskResult:
 	var size: int = s.board.size()
 	if from == to or from < 0 or to < 0 or from >= size or to >= size or s.board[from] == 0:
@@ -144,18 +200,13 @@ static func desk_action(s: PlayerState, from: int, to: int) -> DeskResult:
 		if not Economy.are_neighbors(from, to, size):
 			return DeskResult.NOT_NEIGHBORS
 		result = DeskResult.MERGED
+		var stored: float = s.bubbles[to] + s.bubbles[from]
 		s.board[to] += 1
-		s.bubbles[to] += s.bubbles[from]  # nothing earned is lost in a merge
+		s.bubbles[to] = minf(capacity(s, to), stored)  # what was earned carries over
 		s.board[from] = 0
 		s.bubbles[from] = 0.0
 	else:
-		result = DeskResult.SWAPPED
-		var level: int = s.board[to]
-		var bubble: float = s.bubbles[to]
-		s.board[to] = s.board[from]
-		s.bubbles[to] = s.bubbles[from]
-		s.board[from] = level
-		s.bubbles[from] = bubble
+		return DeskResult.OCCUPIED
 	s.actions_left -= 1
 	return result
 

@@ -9,6 +9,8 @@ var board: Array[int] = []
 ## Unclaimed yen waiting on each desk.
 var bubbles: Array[float] = []
 var hires: int = 0
+## "Welcome back" earnings waiting to be collected.
+var away_pending: float = 0.0
 var run_started: bool = false
 var coffee_level: int = 0
 var pc_level: int = 0
@@ -63,6 +65,7 @@ func to_dict() -> Dictionary:
 		"board": board.duplicate(),
 		"bubbles": bubbles.duplicate(),
 		"hires": hires,
+		"away_pending": away_pending,
 		"run_started": run_started,
 		"coffee_level": coffee_level,
 		"pc_level": pc_level,
@@ -99,6 +102,7 @@ static func from_dict(data: Dictionary) -> PlayerState:
 		if s.board[i] == 0:
 			s.bubbles[i] = 0.0
 	s.hires = int(_num(data, "hires", 0.0, 0.0, 1.0e6))
+	s.away_pending = _num(data, "away_pending", 0.0, 0.0, INF)
 	s.run_started = _flag(data, "run_started", false)
 	s.coffee_level = int(_num(data, "coffee_level", 0.0, 0.0, 1.0e6))
 	s.pc_level = int(_num(data, "pc_level", 0.0, 0.0, EconomyData.PC_MAX_LEVEL))

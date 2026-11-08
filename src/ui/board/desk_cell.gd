@@ -24,12 +24,18 @@ const TILE_COLOR := Color(0.24, 0.25, 0.3)
 const DESK_COLOR := Color(0.47, 0.35, 0.24)
 const BUBBLE_COLOR := Color(0.98, 0.84, 0.3)
 const GLOW_COLOR := Color(1.0, 1.0, 1.0, 0.85)
+const BAR_BG := Color(0.15, 0.15, 0.18)
+const BAR_FILL := Color(0.98, 0.84, 0.3, 0.8)
+const FIRE_COLOR := Color(0.92, 0.4, 0.4)
+const FILL_STEPS: float = 40.0
 
 var desk: int = 0
 var level: int = 0
 var bubble_text: String = ""
 var can_merge: bool = false
 var goal_level: bool = false
+var fill: float = 0.0
+var fire_text: String = ""
 
 
 func _init(index: int) -> void:
@@ -39,18 +45,31 @@ func _init(index: int) -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
 
-func show_state(new_level: int, new_bubble: String, mergeable: bool, at_goal: bool) -> void:
+## Redraws only when something visible changed (fill is rounded to 40 steps).
+func show_state(
+	new_level: int,
+	new_bubble: String,
+	new_fill: float,
+	mergeable: bool,
+	at_goal: bool,
+	new_fire_text: String
+) -> void:
+	var stepped: float = floorf(new_fill * FILL_STEPS) / FILL_STEPS
 	if (
 		new_level == level
 		and new_bubble == bubble_text
+		and is_equal_approx(stepped, fill)
 		and mergeable == can_merge
 		and at_goal == goal_level
+		and new_fire_text == fire_text
 	):
 		return
 	level = new_level
 	bubble_text = new_bubble
+	fill = stepped
 	can_merge = mergeable
 	goal_level = at_goal
+	fire_text = new_fire_text
 	queue_redraw()
 
 
@@ -112,15 +131,24 @@ func _draw() -> void:
 		)
 		if goal_level:
 			draw_circle(r.position + Vector2(22, 22), 12, BUBBLE_COLOR)  # counts toward the goal
-	if bubble_text != "":
-		var pill := Rect2(r.position + Vector2(w * 0.38, 6), Vector2(w * 0.6, 40))
-		draw_rect(pill, BUBBLE_COLOR)
-		draw_string(
-			font,
-			pill.position + Vector2(0, 30),
-			bubble_text,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			pill.size.x,
-			24,
-			Color(0.15, 0.12, 0.05)
-		)
+		var bar := Rect2(r.position + Vector2(w * 0.12, h * 0.8), Vector2(w * 0.76, 8))
+		draw_rect(bar, BAR_BG)
+		draw_rect(Rect2(bar.position, Vector2(bar.size.x * fill, bar.size.y)), BAR_FILL)
+	if fire_text != "":
+		_draw_pill(r, fire_text, FIRE_COLOR, Color.WHITE, font)
+	elif bubble_text != "":
+		_draw_pill(r, bubble_text, BUBBLE_COLOR, Color(0.15, 0.12, 0.05), font)
+
+
+func _draw_pill(r: Rect2, text: String, bg: Color, ink: Color, font: Font) -> void:
+	var pill := Rect2(r.position + Vector2(r.size.x * 0.3, 6), Vector2(r.size.x * 0.68, 40))
+	draw_rect(pill, bg)
+	draw_string(
+		font,
+		pill.position + Vector2(0, 30),
+		text,
+		HORIZONTAL_ALIGNMENT_CENTER,
+		pill.size.x,
+		24,
+		ink
+	)

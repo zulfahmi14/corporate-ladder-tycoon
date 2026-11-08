@@ -47,9 +47,14 @@ const ACTIONS_PER_DAY: int = 200
 const ACTIONS_AD_BONUS: int = 50
 const ACTIONS_RESET_HOUR: int = 4
 
-const BUBBLE_ACTIVE_CAP_S: float = 30.0
-const BUBBLE_SHOW_S: float = 3.0
-const PC_CAP_S_PER_LEVEL: float = 15.0
+## Seconds for each level's bubble to fill (capacity = income x fill seconds).
+## A full bubble must be tapped before the desk earns again (D-12).
+const FILL_S: Array[float] = [
+	20.0, 30.0, 60.0, 90.0, 120.0, 180.0, 240.0, 300.0, 420.0, 600.0, 900.0, 1200.0
+]
+const PC_FILL_SPEEDUP: float = 0.04
+## Firing (only when the office is stuck): severance = 10 minutes of that coworker's income.
+const FIRE_SEVERANCE_S: float = 600.0
 
 const COFFEE_BASE_COST: float = 50.0
 const COFFEE_GROWTH: float = 1.9
