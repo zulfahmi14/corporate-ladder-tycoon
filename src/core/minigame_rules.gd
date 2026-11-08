@@ -19,9 +19,9 @@ static func cooldown_left(s: PlayerState, game: int, now_unix: float) -> float:
 	return maxf(0.0, last + MinigameData.COOLDOWN_S - now_unix)
 
 
-## Income basis: what one second of active play is worth (coworkers + 3 taps).
+## Income basis: one second of the team's income plus a floor so early games still pay.
 static func basis(s: PlayerState) -> float:
-	return GameRules.coworker_ps(s) + MinigameData.TAP_EQUIV_PER_S * GameRules.tap_value(s)
+	return GameRules.income_ps(s) + MinigameData.BASIS_PER_MULT * GameRules.perm_mult(s)
 
 
 ## Reward for a finished game; [param score] is 0..1.

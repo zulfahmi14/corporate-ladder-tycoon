@@ -1,45 +1,25 @@
 class_name Economy
 extends RefCounted
-## Pure economy formulas. No state, no nodes: everything here is unit tested.
+## Pure economy formulas for the merge office. No state, no nodes.
 
 
-## Cost of the next coworker of type [param index] when [param owned] are owned.
-static func coworker_cost(index: int, owned: int) -> float:
-	return EconomyData.COWORKER_BASE_COSTS[index] * pow(EconomyData.COWORKER_GROWTH, owned)
+static func board_size(rank: int) -> int:
+	return EconomyData.BOARD_COLS * (EconomyData.BOARD_ROWS_BASE + rank)
 
 
-## Total cost of buying [param count] coworkers starting from [param owned].
-static func coworker_bulk_cost(index: int, owned: int, count: int) -> float:
-	if count <= 0:
+static func hire_level(rank: int) -> int:
+	return rank + 1
+
+
+## Cost of the next hire when [param hires] were already made this run.
+static func hire_cost(rank: int, hires: int) -> float:
+	return EconomyData.HIRE_BASE_COST[rank] * pow(EconomyData.HIRE_GROWTH, hires)
+
+
+static func level_income(level: int) -> float:
+	if level < 1 or level > EconomyData.MAX_LEVEL:
 		return 0.0
-	var g: float = EconomyData.COWORKER_GROWTH
-	return coworker_cost(index, owned) * (pow(g, count) - 1.0) / (g - 1.0)
-
-
-## How many coworkers [param money] can buy (the "Max" button).
-static func coworker_max_affordable(index: int, owned: int, money: float) -> int:
-	var first: float = coworker_cost(index, owned)
-	if money < first:
-		return 0
-	var g: float = EconomyData.COWORKER_GROWTH
-	var count: int = floori(log(money * (g - 1.0) / first + 1.0) / log(g))
-	# Float rounding can overshoot by one; never sell what the player cannot pay for.
-	while count > 0 and coworker_bulk_cost(index, owned, count) > money:
-		count -= 1
-	return count
-
-
-## Each milestone reached doubles that coworker type's income.
-static func milestone_mult(owned: int) -> float:
-	var reached: int = 0
-	for milestone: int in EconomyData.MILESTONES:
-		if owned >= milestone:
-			reached += 1
-	return pow(2.0, reached)
-
-
-static func is_coworker_unlocked(index: int, rank: int) -> bool:
-	return index < EconomyData.UNLOCKED_AT_INTERN + rank
+	return EconomyData.LEVEL_INCOME[level - 1]
 
 
 static func coffee_cost(level: int) -> float:
@@ -63,28 +43,14 @@ static func permanent_mult(rank: int, xp: int, careers: int) -> float:
 	)
 
 
-## Coworker income per second before temporary boosts.
-static func coworker_income(owned: Array[int], desk_level: int, perm: float) -> float:
-	var raw: float = 0.0
-	for i: int in owned.size():
-		raw += owned[i] * EconomyData.COWORKER_BASE_INCOME[i] * milestone_mult(owned[i])
-	return raw * pow(EconomyData.DESK_MULT_PER_LEVEL, desk_level) * perm
+## Coffee (+10% each, additive) times Better desk (x1.5 each).
+static func upgrade_mult(coffee_level: int, desk_level: int) -> float:
+	return (1.0 + EconomyData.COFFEE_BONUS * coffee_level) * pow(EconomyData.DESK_MULT, desk_level)
 
 
-## Yen earned by one tap.
-static func tap_value(coffee_level: int, pc_level: int, coworker_ps: float, perm: float) -> float:
-	return (1.0 + coffee_level) * perm + EconomyData.PC_TAP_SHARE_PER_LEVEL * pc_level * coworker_ps
-
-
-static func can_promote(rank: int, run_earned: float) -> bool:
-	return run_earned >= EconomyData.RANK_REQUIREMENTS[rank]
-
-
-## XP = floor(10 * sqrt(E / R)); waiting past the requirement pays more.
-static func xp_for_promotion(rank: int, run_earned: float) -> int:
-	return floori(
-		EconomyData.XP_PER_PROMOTION_K * sqrt(run_earned / EconomyData.RANK_REQUIREMENTS[rank])
-	)
+## How many seconds of income a bubble holds while the app is open.
+static func bubble_cap_s(pc_level: int) -> float:
+	return EconomyData.BUBBLE_ACTIVE_CAP_S + EconomyData.PC_CAP_S_PER_LEVEL * pc_level
 
 
 static func offline_cap_s(rank: int, careers: int) -> float:
@@ -93,9 +59,38 @@ static func offline_cap_s(rank: int, careers: int) -> float:
 	return (EconomyData.OFFLINE_BASE_CAP_H + rank) * 3600.0
 
 
-## Offline payout; negative elapsed time (clock moved back) pays nothing.
-static func offline_earnings(
-	coworker_ps: float, elapsed_s: float, rank: int, careers: int
-) -> float:
-	var t: float = clampf(elapsed_s, 0.0, offline_cap_s(rank, careers))
-	return coworker_ps * t * EconomyData.OFFLINE_EFFICIENCY
+## Coworkers at the goal level or higher.
+static func goal_progress(board: Array[int], rank: int) -> int:
+	var count: int = 0
+	for level: int in board:
+		if level >= EconomyData.GOAL_LEVEL[rank]:
+			count += 1
+	return count
+
+
+static func goal_met(board: Array[int], rank: int) -> bool:
+	return goal_progress(board, rank) >= EconomyData.GOAL_COUNT[rank]
+
+
+## Desks next to [param i] (up, down, left, right) on a board of [param size].
+static func neighbors(i: int, size: int) -> Array[int]:
+	var cols: int = EconomyData.BOARD_COLS
+	var out: Array[int] = []
+	if i - cols >= 0:
+		out.append(i - cols)
+	if i + cols < size:
+		out.append(i + cols)
+	if i % cols > 0:
+		out.append(i - 1)
+	if i % cols < cols - 1:
+		out.append(i + 1)
+	return out
+
+
+static func are_neighbors(a: int, b: int, size: int) -> bool:
+	return neighbors(a, size).has(b)
+
+
+## Day number for the daily action limit: days roll over at 04:00 local time.
+static func action_day(local_unix: float) -> int:
+	return floori((local_unix - EconomyData.ACTIONS_RESET_HOUR * 3600.0) / 86400.0)

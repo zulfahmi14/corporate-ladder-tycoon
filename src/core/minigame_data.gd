@@ -17,4 +17,4 @@ const BASE_SECONDS: Array[float] = [30.0, 45.0, 60.0, 90.0, 120.0]
 const DIFFICULTY_MULT: Array[float] = [1.0, 2.0, 4.0]
 const DIFFICULTY_KEYS: Array[String] = ["DIFFICULTY_EASY", "DIFFICULTY_NORMAL", "DIFFICULTY_HARD"]
 const COOLDOWN_S: float = 300.0
-const TAP_EQUIV_PER_S: float = 3.0
+const BASIS_PER_MULT: float = 3.0

@@ -1,23 +1,12 @@
 keys,en
-MAIN_TAP_BUTTON,Work!
 MAIN_INCOME_PER_SEC,{amount} / sec
-MAIN_HIRE_BUTTON,Hire {name} x{owned} ({cost})
 MAIN_MINIGAMES_BUTTON,Mini games
-MAIN_PROMOTE_BUTTON,Get promoted to {rank}!
 RANK_INTERN,Intern
 RANK_STAFF,Staff
 RANK_SECTION_CHIEF,Section Chief
 RANK_MANAGER,Manager
 RANK_DIRECTOR,Director
 RANK_CEO,CEO
-COWORKER_PART_TIMER,Part-timer
-COWORKER_KOUHAI,Kouhai
-COWORKER_SENPAI,Senpai
-COWORKER_TEAM_LEADER,Team leader
-COWORKER_SALES_ACE,Sales ace
-COWORKER_SYSTEMS_ENGINEER,Systems engineer
-COWORKER_CONSULTANT,Consultant
-COWORKER_BOARD_ADVISOR,Board advisor
 BACK_BUTTON,Back
 COLLECT_BUTTON,Collect
 MINIGAMES_TITLE,Mini games
@@ -65,3 +54,39 @@ BOARD_IT,IT
 BOARD_FINANCE,Finance
 BOARD_WATCH,Round {n} / {total} · Watch...
 BOARD_YOUR_TURN,Your turn!
+MAIN_HIRE_BUTTON,"Hire
+{cost}"
+MAIN_OFFICE_FULL,"Office full
+merge first"
+MAIN_UPGRADES_BUTTON,Upgrades
+MAIN_PROMOTE_BUTTON,Get promoted to {rank}!
+MAIN_GOAL,Promotion goal: {count}x Lv{level} {name} ({have}/{count})
+MAIN_ACTIONS,Desk actions today: {left} / {max}
+HIRE_DONE,New hire!
+MERGE_DONE,Level up!
+TOAST_NO_ACTIONS,No desk actions left today. They refill at 04:00.
+TOAST_NOT_NEIGHBORS,Merge only with a coworker on a neighbouring desk.
+TOAST_MAX_LEVEL,Already at the top level!
+TOAST_OFFICE_FULL,The office is full. Merge coworkers to free desks.
+TOAST_PROMOTED,Promoted to {rank}! Your new office has more desks.
+TOAST_OFFLINE,Your team earned {amount} while you were away. Tap the bubbles!
+UPGRADES_TITLE,Upgrades
+UPGRADE_COFFEE,"Coffee Lv{level}: +10% income
+{cost}"
+UPGRADE_PC,"Faster PC Lv{level}: bubbles hold +15 s
+{cost}"
+UPGRADE_DESK,"Better desk Lv{level}: income x1.5
+{cost}"
+MAX_LEVEL,Max
+LEVEL_PART_TIMER,Part-timer
+LEVEL_KOUHAI,Kouhai
+LEVEL_SENPAI,Senpai
+LEVEL_TEAM_LEADER,Team leader
+LEVEL_SALES_ACE,Sales ace
+LEVEL_SYSTEMS_ENGINEER,Engineer
+LEVEL_CONSULTANT,Consultant
+LEVEL_PROJECT_LEAD,Project lead
+LEVEL_DEPARTMENT_HEAD,Dept head
+LEVEL_EXECUTIVE,Executive
+LEVEL_VICE_PRESIDENT,Vice pres.
+LEVEL_BOARD_ADVISOR,Board advisor

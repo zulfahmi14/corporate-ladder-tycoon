@@ -1,15 +1,22 @@
 extends Control
-## Main screen: yen, rank, tap to work, promotion, hiring, and the mini game hub.
+## Main screen: the merge office. Tap bubbles to collect, drag to move or merge,
+## hire to fill desks, reach the promotion goal.
 
-const FONT_SIZE: int = 40
+const FONT_SIZE: int = 36
+const TOAST_S: float = 2.5
 
 var _rank_label: Label
 var _yen_label: Label
 var _income_label: Label
+var _goal_label: Label
+var _actions_label: Label
 var _promote_button: Button
-var _hire_list: VBoxContainer
-var _hire_buttons: Array[Button] = []
-var _hub: MinigameHub
+var _hire_button: Button
+var _grid: GridContainer
+var _cells: Array[DeskCell] = []
+var _toast: Label
+var _toast_left: float = 0.0
+var _overlay: Control
 
 
 func _ready() -> void:
@@ -17,97 +24,222 @@ func _ready() -> void:
 	t.default_font_size = FONT_SIZE
 	theme = t
 	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 28)
+	page.add_theme_constant_override("separation", 12)
 	MinigameView.add_page(self, page)
-	_rank_label = MinigameView.make_label("", 44)
+	_rank_label = MinigameView.make_label("", 36)
 	page.add_child(_rank_label)
-	_yen_label = MinigameView.make_label("", 96)
+	_yen_label = MinigameView.make_label("", 80)
 	page.add_child(_yen_label)
-	_income_label = MinigameView.make_label("", 40)
+	_income_label = MinigameView.make_label("", 32)
 	page.add_child(_income_label)
-	var tap := MinigameView.make_button(tr("MAIN_TAP_BUTTON"), 360)
-	tap.add_theme_font_size_override("font_size", 64)
-	tap.pressed.connect(_on_tap)
-	page.add_child(tap)
-	var games := MinigameView.make_button(tr("MAIN_MINIGAMES_BUTTON"), 150)
-	games.pressed.connect(_open_hub)
-	page.add_child(games)
-	_promote_button = MinigameView.make_button("", 150)
+	_goal_label = MinigameView.make_label("", 32)
+	page.add_child(_goal_label)
+	_promote_button = MinigameView.make_button("", 120)
 	MinigameView.paint(_promote_button, MinigameView.GOOD_COLOR)
 	_promote_button.pressed.connect(_on_promote)
 	page.add_child(_promote_button)
+	_actions_label = MinigameView.make_label("", 28)
+	page.add_child(_actions_label)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	page.add_child(scroll)
-	_hire_list = VBoxContainer.new()
-	_hire_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hire_list.add_theme_constant_override("separation", 16)
-	scroll.add_child(_hire_list)
-	for i: int in EconomyData.COWORKER_KEYS.size():
-		var hire := MinigameView.make_button("", 120)
-		hire.pressed.connect(_on_hire.bind(i))
-		_hire_list.add_child(hire)
-		_hire_buttons.append(hire)
+	_grid = GridContainer.new()
+	_grid.columns = EconomyData.BOARD_COLS
+	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_grid)
+	page.add_child(_build_bottom_bar())
+	_toast = MinigameView.make_label("", 32)
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_toast.offset_top = -330
+	_toast.offset_bottom = -260
+	_toast.offset_left = -500
+	_toast.offset_right = 500
+	add_child(_toast)
 	GameState.changed.connect(_refresh)
+	GameState.offline_earned.connect(_on_offline_earned)
 	_refresh()
 
 
-func _on_tap() -> void:
-	GameRules.tap(GameState.state)
+func _build_bottom_bar() -> HBoxContainer:
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 16)
+	_hire_button = MinigameView.make_button("", 150)
+	MinigameView.paint(_hire_button, Color(0.35, 0.58, 0.9))
+	_hire_button.pressed.connect(_on_hire)
+	bar.add_child(_hire_button)
+	var upgrades := MinigameView.make_button(tr("MAIN_UPGRADES_BUTTON"), 150)
+	upgrades.pressed.connect(_open_overlay.bind(true))
+	bar.add_child(upgrades)
+	var games := MinigameView.make_button(tr("MAIN_MINIGAMES_BUTTON"), 150)
+	games.pressed.connect(_open_overlay.bind(false))
+	bar.add_child(games)
+	return bar
+
+
+func _process(delta: float) -> void:
+	if _toast_left > 0.0:
+		_toast_left -= delta
+		if _toast_left <= 0.0:
+			_toast.text = ""
+
+
+func _rebuild_board_if_needed(size: int) -> void:
+	if _cells.size() == size:
+		return
+	for cell: DeskCell in _cells:
+		cell.queue_free()
+	_cells.clear()
+	for i: int in size:
+		var cell := DeskCell.new(i)
+		cell.tapped.connect(_on_desk_tapped)
+		cell.dropped.connect(_on_desk_dropped)
+		_grid.add_child(cell)
+		_cells.append(cell)
+
+
+func _on_desk_tapped(desk: int) -> void:
+	var s: PlayerState = GameState.state
+	if not GameRules.bubble_visible(s, desk):
+		return
+	var amount: float = GameRules.claim(s, desk)
+	_float_text(_cells[desk], "+" + NumberFormat.yen(amount))
 	GameState.mark_dirty()
 
 
-func _on_hire(index: int) -> void:
-	if GameRules.buy_coworker(GameState.state, index, 1):
-		GameState.mark_dirty()
+func _on_desk_dropped(from: int, to: int) -> void:
+	var result: GameRules.DeskResult = GameRules.desk_action(GameState.state, from, to)
+	match result:
+		GameRules.DeskResult.MERGED:
+			_float_text(_cells[to], tr("MERGE_DONE"))
+			Input.vibrate_handheld(40)
+		GameRules.DeskResult.NO_ACTIONS:
+			_show_toast(tr("TOAST_NO_ACTIONS"))
+		GameRules.DeskResult.NOT_NEIGHBORS:
+			_show_toast(tr("TOAST_NOT_NEIGHBORS"))
+		GameRules.DeskResult.MAX_LEVEL:
+			_show_toast(tr("TOAST_MAX_LEVEL"))
+	GameState.mark_dirty()
+
+
+func _on_hire() -> void:
+	var s: PlayerState = GameState.state
+	var desk: int = GameRules.hire(s, GameState.rng)
+	if desk < 0:
+		if GameRules.free_desks(s).is_empty():
+			_show_toast(tr("TOAST_OFFICE_FULL"))
+		return
+	_float_text(_cells[desk], tr("HIRE_DONE"))
+	GameState.mark_dirty()
 
 
 func _on_promote() -> void:
-	if GameRules.promote(GameState.state) >= 0:
+	if GameRules.promote(GameState.state, GameState.rng) >= 0:
+		Input.vibrate_handheld(120)
+		_show_toast(
+			tr("TOAST_PROMOTED").format({"rank": tr(EconomyData.RANK_KEYS[GameState.state.rank])})
+		)
 		GameState.mark_dirty()
 
 
-func _open_hub() -> void:
-	if _hub != null:
+func _on_offline_earned(amount: float) -> void:
+	_show_toast(tr("TOAST_OFFLINE").format({"amount": NumberFormat.yen(amount)}))
+
+
+func _open_overlay(upgrades: bool) -> void:
+	if _overlay != null:
 		return
-	_hub = MinigameHub.new()
-	_hub.closed.connect(_close_hub)
-	add_child(_hub)
+	if upgrades:
+		var panel := UpgradesPanel.new()
+		panel.closed.connect(_close_overlay)
+		_overlay = panel
+	else:
+		var hub := MinigameHub.new()
+		hub.closed.connect(_close_overlay)
+		_overlay = hub
+	add_child(_overlay)
 
 
-func _close_hub() -> void:
-	_hub.queue_free()
-	_hub = null
+func _close_overlay() -> void:
+	_overlay.queue_free()
+	_overlay = null
+
+
+func _show_toast(text: String) -> void:
+	_toast.text = text
+	_toast_left = TOAST_S
+
+
+func _float_text(cell: Control, text: String) -> void:
+	var label := MinigameView.make_label(text, 34)
+	label.add_theme_color_override("font_color", DeskCell.BUBBLE_COLOR)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(label)
+	label.size = Vector2(cell.size.x, 50)
+	label.global_position = cell.global_position + Vector2(0, 20)
+	var tween := label.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "global_position:y", label.global_position.y - 90, 0.7)
+	tween.tween_property(label, "modulate:a", 0.0, 0.7)
+	tween.chain().tween_callback(label.queue_free)
 
 
 func _refresh() -> void:
 	var s: PlayerState = GameState.state
+	_rebuild_board_if_needed(s.board.size())
 	_rank_label.text = tr(EconomyData.RANK_KEYS[s.rank])
 	_yen_label.text = NumberFormat.yen(s.yen)
 	_income_label.text = tr("MAIN_INCOME_PER_SEC").format(
-		{"amount": NumberFormat.yen(GameRules.coworker_ps(s))}
+		{"amount": NumberFormat.yen(GameRules.income_ps(s))}
 	)
-	var can_promote: bool = (
-		s.rank < EconomyData.CEO_RANK and Economy.can_promote(s.rank, s.run_earned)
+	_refresh_goal(s)
+	_actions_label.text = tr("MAIN_ACTIONS").format(
+		{"left": s.actions_left, "max": EconomyData.ACTIONS_PER_DAY}
 	)
-	_promote_button.visible = can_promote
-	if can_promote:
+	var cost: float = GameRules.hire_cost(s)
+	var full: bool = GameRules.free_desks(s).is_empty()
+	_hire_button.text = (
+		tr("MAIN_OFFICE_FULL")
+		if full
+		else tr("MAIN_HIRE_BUTTON").format({"cost": NumberFormat.yen(cost)})
+	)
+	_hire_button.disabled = full or cost > s.yen
+	var goal: int = EconomyData.GOAL_LEVEL[s.rank]
+	for desk: int in _cells.size():
+		var level: int = s.board[desk]
+		var bubble: String = (
+			"+" + NumberFormat.yen(s.bubbles[desk]) if GameRules.bubble_visible(s, desk) else ""
+		)
+		_cells[desk].show_state(level, bubble, _has_twin_neighbor(s, desk), level >= goal)
+
+
+func _refresh_goal(s: PlayerState) -> void:
+	var level: int = EconomyData.GOAL_LEVEL[s.rank]
+	_goal_label.text = (
+		tr("MAIN_GOAL")
+		. format(
+			{
+				"count": EconomyData.GOAL_COUNT[s.rank],
+				"level": level,
+				"name": tr(EconomyData.LEVEL_KEYS[level - 1]),
+				"have":
+				mini(Economy.goal_progress(s.board, s.rank), EconomyData.GOAL_COUNT[s.rank]),
+			}
+		)
+	)
+	var ready: bool = GameRules.can_promote(s)
+	_promote_button.visible = ready
+	if ready:
 		_promote_button.text = tr("MAIN_PROMOTE_BUTTON").format(
 			{"rank": tr(EconomyData.RANK_KEYS[s.rank + 1])}
 		)
-	for i: int in _hire_buttons.size():
-		var button: Button = _hire_buttons[i]
-		button.visible = Economy.is_coworker_unlocked(i, s.rank)
-		if button.visible:
-			button.text = (
-				tr("MAIN_HIRE_BUTTON")
-				. format(
-					{
-						"name": tr(EconomyData.COWORKER_KEYS[i]),
-						"owned": s.owned[i],
-						"cost": NumberFormat.yen(Economy.coworker_cost(i, s.owned[i])),
-					}
-				)
-			)
-			button.disabled = Economy.coworker_cost(i, s.owned[i]) > s.yen
+
+
+static func _has_twin_neighbor(s: PlayerState, desk: int) -> bool:
+	var level: int = s.board[desk]
+	if level == 0 or level >= EconomyData.MAX_LEVEL:
+		return false
+	for n: int in Economy.neighbors(desk, s.board.size()):
+		if s.board[n] == level:
+			return true
+	return false
