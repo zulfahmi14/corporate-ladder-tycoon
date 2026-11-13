@@ -5,7 +5,6 @@ extends Control
 const FONT_SIZE: int = 36
 const TOAST_S: float = 2.5
 
-var _rank_label: Label
 var _yen_label: Label
 var _income_label: Label
 var _goal_label: Label
@@ -18,25 +17,20 @@ var _hire_button: Button
 var _grid: GridContainer
 var _cells: Array[DeskCell] = []
 var _toast: Label
+var _toast_panel: PanelContainer
+var _goal_bar: ProgressBar
+var _rank_chip: Label
 var _toast_left: float = 0.0
 var _overlay: Control
 
 
 func _ready() -> void:
-	var t := Theme.new()
-	t.default_font_size = FONT_SIZE
-	theme = t
+	theme = GameTheme.build(FONT_SIZE)
+	add_child(GameTheme.background())
 	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 12)
+	page.add_theme_constant_override("separation", 14)
 	MinigameView.add_page(self, page)
-	_rank_label = MinigameView.make_label("", 36)
-	page.add_child(_rank_label)
-	_yen_label = MinigameView.make_label("", 80)
-	page.add_child(_yen_label)
-	_income_label = MinigameView.make_label("", 32)
-	page.add_child(_income_label)
-	_goal_label = MinigameView.make_label("", 32)
-	page.add_child(_goal_label)
+	page.add_child(_build_header())
 	_promote_button = MinigameView.make_button("", 120)
 	MinigameView.paint(_promote_button, MinigameView.GOOD_COLOR)
 	_promote_button.pressed.connect(_on_promote)
@@ -60,29 +54,66 @@ func _ready() -> void:
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_grid)
 	page.add_child(_build_bottom_bar())
-	_toast = MinigameView.make_label("", 32)
-	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_toast.offset_top = -330
-	_toast.offset_bottom = -260
-	_toast.offset_left = -500
-	_toast.offset_right = 500
-	add_child(_toast)
+	_toast_panel = PanelContainer.new()
+	_toast_panel.add_theme_stylebox_override("panel", GameTheme.card(Palette.INK, 24))
+	_toast_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_toast_panel.offset_top = -360
+	_toast_panel.offset_bottom = -270
+	_toast_panel.offset_left = -480
+	_toast_panel.offset_right = 480
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast_panel.visible = false
+	add_child(_toast_panel)
+	_toast = MinigameView.make_label("", 30)
+	_toast.add_theme_color_override("font_color", Color.WHITE)
+	_toast_panel.add_child(_toast)
 	GameState.changed.connect(_refresh)
 	GameState.offline_earned.connect(_on_offline_earned)
 	_refresh()
+
+
+## White card at the top: rank chip, yen, income, promotion goal with a progress bar.
+func _build_header() -> PanelContainer:
+	var card := PanelContainer.new()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	card.add_child(box)
+	var chip_row := CenterContainer.new()
+	box.add_child(chip_row)
+	var chip := PanelContainer.new()
+	chip.add_theme_stylebox_override("panel", GameTheme.card(Palette.PURPLE, 22, false))
+	chip_row.add_child(chip)
+	_rank_chip = MinigameView.make_label("", 30)
+	_rank_chip.add_theme_color_override("font_color", Color.WHITE)
+	_rank_chip.autowrap_mode = TextServer.AUTOWRAP_OFF  # a chip sizes to its text
+	chip.add_child(_rank_chip)
+	_yen_label = MinigameView.make_label("", 84)
+	box.add_child(_yen_label)
+	_income_label = MinigameView.make_label("", 30)
+	_income_label.add_theme_color_override("font_color", Palette.INK_SOFT)
+	box.add_child(_income_label)
+	_goal_label = MinigameView.make_label("", 28)
+	box.add_child(_goal_label)
+	_goal_bar = ProgressBar.new()
+	_goal_bar.show_percentage = false
+	_goal_bar.custom_minimum_size = Vector2(0, 22)
+	box.add_child(_goal_bar)
+	return card
 
 
 func _build_bottom_bar() -> HBoxContainer:
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 16)
 	_hire_button = MinigameView.make_button("", 150)
-	MinigameView.paint(_hire_button, Color(0.35, 0.58, 0.9))
+	MinigameView.paint(_hire_button, Palette.BLUE)
 	_hire_button.pressed.connect(_on_hire)
 	bar.add_child(_hire_button)
 	var upgrades := MinigameView.make_button(tr("MAIN_UPGRADES_BUTTON"), 150)
+	MinigameView.paint(upgrades, Palette.PURPLE)
 	upgrades.pressed.connect(_open_overlay.bind(true))
 	bar.add_child(upgrades)
 	var games := MinigameView.make_button(tr("MAIN_MINIGAMES_BUTTON"), 150)
+	MinigameView.paint(games, Palette.ORANGE)
 	games.pressed.connect(_open_overlay.bind(false))
 	bar.add_child(games)
 	return bar
@@ -93,6 +124,7 @@ func _process(delta: float) -> void:
 		_toast_left -= delta
 		if _toast_left <= 0.0:
 			_toast.text = ""
+			_toast_panel.visible = false
 
 
 func _rebuild_board_if_needed(size: int) -> void:
@@ -210,12 +242,15 @@ func _close_overlay() -> void:
 
 func _show_toast(text: String) -> void:
 	_toast.text = text
+	_toast_panel.visible = true
 	_toast_left = TOAST_S
 
 
 func _float_text(cell: Control, text: String) -> void:
 	var label := MinigameView.make_label(text, 34)
-	label.add_theme_color_override("font_color", DeskCell.BUBBLE_COLOR)
+	label.add_theme_color_override("font_color", Palette.GOLD)
+	label.add_theme_color_override("font_outline_color", Palette.INK)
+	label.add_theme_constant_override("outline_size", 10)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
 	label.size = Vector2(cell.size.x, 50)
@@ -230,7 +265,7 @@ func _float_text(cell: Control, text: String) -> void:
 func _refresh() -> void:
 	var s: PlayerState = GameState.state
 	_rebuild_board_if_needed(s.board.size())
-	_rank_label.text = tr(EconomyData.RANK_KEYS[s.rank])
+	_rank_chip.text = tr(EconomyData.RANK_KEYS[s.rank])
 	_yen_label.text = NumberFormat.yen(s.yen)
 	_income_label.text = tr("MAIN_INCOME_PER_SEC").format(
 		{"amount": NumberFormat.yen(GameRules.income_ps(s))}
@@ -258,10 +293,10 @@ func _refresh() -> void:
 	for desk: int in _cells.size():
 		var level: int = s.board[desk]
 		var ready: bool = GameRules.bubble_full(s, desk)
-		var bubble: String = "+" + NumberFormat.yen(s.bubbles[desk]) if ready else ""
+		var bubble: String = "+" + NumberFormat.short(s.bubbles[desk]) if ready else ""
 		var fire_text: String = ""
 		if _fire_mode and level > 0:
-			fire_text = "-" + NumberFormat.yen(GameRules.fire_cost(s, desk))
+			fire_text = "-" + NumberFormat.short(GameRules.fire_cost(s, desk))
 		_cells[desk].show_state(
 			level,
 			bubble,
@@ -286,6 +321,8 @@ func _refresh_goal(s: PlayerState) -> void:
 			}
 		)
 	)
+	_goal_bar.max_value = EconomyData.GOAL_COUNT[s.rank]
+	_goal_bar.value = Economy.goal_progress(s.board, s.rank)
 	var ready: bool = GameRules.can_promote(s)
 	_promote_button.visible = ready
 	if ready:

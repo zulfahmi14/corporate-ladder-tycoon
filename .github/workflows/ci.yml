@@ -45,6 +45,8 @@ jobs:
           if bad:
               sys.exit(f"Malformed rows (quote values that contain commas): {bad}")
           PY
+      - name: Every asset has a license row (assets/LICENSES.csv)
+        run: python3 tools/check_assets.py
       - name: Balance sim runs
         run: python3 tools/sim/sim.py
       - name: Parity fixture is up to date with tools/sim/economy.py

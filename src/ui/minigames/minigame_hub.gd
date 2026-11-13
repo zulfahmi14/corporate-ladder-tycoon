@@ -19,10 +19,7 @@ var _difficulty_buttons: Array = []  # Array of Array[Button], one per game
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color(0.16, 0.17, 0.2)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(GameTheme.background())
 	_build_menu()
 	_build_result()
 	_refresh()
@@ -93,6 +90,7 @@ func _make_row(game: int) -> VBoxContainer:
 	var row_buttons: Array[Button] = []
 	for diff: int in MinigameData.DIFFICULTY_MULT.size():
 		var button := MinigameView.make_button("", 150)
+		MinigameView.paint(button, [Palette.GREEN, Palette.BLUE, Palette.RED][diff])
 		button.pressed.connect(_start.bind(game, diff))
 		buttons.add_child(button)
 		row_buttons.append(button)

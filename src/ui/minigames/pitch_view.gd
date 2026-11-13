@@ -23,14 +23,14 @@ func _build(body: VBoxContainer) -> void:
 	_feedback = make_label("", 48)
 	body.add_child(_feedback)
 	_track = ColorRect.new()
-	_track.color = Color(0.25, 0.25, 0.25)
+	_track.color = Palette.CARD_EDGE
 	_track.custom_minimum_size = Vector2(0, 160)
 	body.add_child(_track)
 	_zone = ColorRect.new()
 	_zone.color = GOOD_COLOR
 	_track.add_child(_zone)
 	_needle = ColorRect.new()
-	_needle.color = Color.WHITE
+	_needle.color = Palette.INK
 	_track.add_child(_needle)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL

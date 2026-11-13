@@ -9,16 +9,14 @@ var _buttons: Array[Button] = []
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color(0.16, 0.17, 0.2)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(GameTheme.background())
 	var page := VBoxContainer.new()
 	page.add_theme_constant_override("separation", 32)
 	MinigameView.add_page(self, page)
 	page.add_child(MinigameView.make_label(tr("UPGRADES_TITLE"), 64))
 	for i: int in 3:
 		var button := MinigameView.make_button("", 200)
+		MinigameView.paint(button, [Palette.ORANGE, Palette.BLUE, Palette.PURPLE][i])
 		button.pressed.connect(_buy.bind(i))
 		page.add_child(button)
 		_buttons.append(button)

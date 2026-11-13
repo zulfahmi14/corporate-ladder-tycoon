@@ -4,9 +4,9 @@ extends Control
 
 signal finished(score: float)
 
-const GOOD_COLOR := Color(0.55, 0.85, 0.55)
-const BAD_COLOR := Color(0.95, 0.5, 0.5)
-const DIM_COLOR := Color(0.22, 0.23, 0.27)
+const GOOD_COLOR := Palette.GREEN
+const BAD_COLOR := Palette.RED
+const DIM_COLOR := Color("efe3f2")
 const MARGIN_SIDE: int = 48
 const MARGIN_TOP: int = 120
 const MARGIN_BOTTOM: int = 96
@@ -85,16 +85,17 @@ static func add_page(parent: Control, page: Control) -> void:
 	parent.add_child(page)
 
 
-## Solid fill colour for a button (readable text picked from the fill brightness).
+## Candy-style fill colour for a button (readable text picked from the fill brightness).
 static func paint(button: Button, color: Color) -> void:
-	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var box := StyleBoxFlat.new()
-		box.bg_color = color.darkened(0.2) if state == "pressed" else color
-		box.set_corner_radius_all(16)
-		button.add_theme_stylebox_override(state, box)
-	var ink: Color = Color(0.1, 0.1, 0.12) if color.get_luminance() > 0.45 else Color.WHITE
+	button.add_theme_stylebox_override("normal", GameTheme.candy(color))
+	button.add_theme_stylebox_override("hover", GameTheme.candy(color))
+	button.add_theme_stylebox_override("focus", GameTheme.candy(color))
+	button.add_theme_stylebox_override("pressed", GameTheme.candy(color.darkened(0.1), true))
+	button.add_theme_stylebox_override("disabled", GameTheme.candy(color.lerp(Color.WHITE, 0.55)))
+	var ink: Color = Palette.INK if color.get_luminance() > 0.6 else Color.WHITE
 	for key: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		button.add_theme_color_override(key, ink)
+	button.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.85))
 
 
 static func make_button(text: String, min_height: float) -> Button:

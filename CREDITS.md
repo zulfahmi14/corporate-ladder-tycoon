@@ -5,7 +5,7 @@ when it enters the project, with its source and license.
 
 | Asset | Author | Source | License |
 | --- | --- | --- | --- |
-| _none yet_ | | | |
+| assets/fonts/mplus-rounded-1c/MPLUSRounded1c-ExtraBold.ttf | Coji Morishita / The Rounded M+ Project Authors | https://fonts.google.com/specimen/M+PLUS+Rounded+1c | SIL OFL 1.1 |
 
 ## Engine
 
