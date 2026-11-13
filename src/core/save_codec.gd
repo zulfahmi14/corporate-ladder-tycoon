@@ -2,7 +2,7 @@ class_name SaveCodec
 extends RefCounted
 ## Save file format: {"version": N, "state": {...}}. Migrations upgrade old versions.
 
-const CURRENT_VERSION: int = 1
+const CURRENT_VERSION: int = 2
 
 
 static func encode(state: PlayerState) -> String:
@@ -28,6 +28,10 @@ static func decode(text: String) -> PlayerState:
 
 
 static func _migrate(state: Dictionary, version: int) -> Dictionary:
-	# Version 1 is the first format; add "if version < N" steps here later.
-	assert(version <= CURRENT_VERSION)
-	return state
+	var out: Dictionary = state.duplicate()
+	if version < 2:
+		# v1 had a list of owned coworkers and a yen promotion requirement. The merge
+		# office starts a fresh run at the same rank; XP, careers and settings are kept.
+		for key: String in ["yen", "run_earned", "owned", "coffee_level", "pc_level", "desk_level"]:
+			out.erase(key)
+	return out

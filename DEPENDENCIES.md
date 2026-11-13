@@ -14,6 +14,7 @@ skill for the intake checklist. Game assets are tracked separately in
 | actions/setup-python | v7.1.0 | CI | GitHub | commit SHA | MIT | 2026-11-04 |
 | actions/cache | v6.1.0 | CI | GitHub | commit SHA | MIT | 2026-11-04 |
 | actions/upload-artifact | v7.0.2 | CI | GitHub | commit SHA | MIT | 2026-11-04 |
+| actions/download-artifact | v8.0.2 | CI (publish test build) | GitHub | commit SHA | MIT | 2026-11-08 |
 
 Test framework: none. `tests/run_tests.gd` is our own ~60-line runner, so no
 third-party test addon ships with or builds the game.

@@ -11,26 +11,50 @@ import sim
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "fixtures", "economy_parity.json")
 
-random.seed(7)
+rng = random.Random(7)
 cases = []
 for _ in range(25):
-    p = sim.Player(False)
-    p.rank = random.randint(0, 5)
-    p.xp = random.randint(0, 200)
-    p.careers = random.randint(0, 3)
-    p.owned = [random.randint(0, 220) for _ in E.COWORKERS]
-    p.lv = {"coffee": random.randint(0, 60), "pc": random.randint(0, 10), "desk": random.randint(0, 12)}
+    p = sim.Player(False, random.Random(rng.random()))
+    p.rank = rng.randint(0, 5)
+    p.reset_run()
+    p.xp, p.careers, p.hires = rng.randint(0, 200), rng.randint(0, 3), rng.randint(0, 120)
+    p.board = [rng.choice([0, 0] + list(range(1, E.MAX_LEVEL + 1))) for _ in p.board]
+    p.lv = {"coffee": rng.randint(0, 30), "pc": rng.randint(0, 10), "desk": rng.randint(0, 8)}
     cases.append({
-        "rank": p.rank, "xp": p.xp, "careers": p.careers, "owned": p.owned,
-        "coffee": p.lv["coffee"], "pc": p.lv["pc"], "desk": p.lv["desk"],
-        "perm": p.perm_mult(), "coworker_ps": p.coworker_ps(), "tap": p.tap_value(),
+        "rank": p.rank, "xp": p.xp, "careers": p.careers, "hires": p.hires,
+        "board": p.board, "coffee": p.lv["coffee"], "desk": p.lv["desk"],
+        "perm": E.perm_mult(p.rank, p.xp, p.careers),
+        "upgrade_mult": E.upgrade_mult(p.lv["coffee"], p.lv["desk"]),
+        "hire_cost": E.hire_cost(p.rank, p.hires),
+        "goal_progress": E.goal_progress(p.board, p.rank),
+        "income_ps": p.income_ps(),
     })
 
 constants = {
-    "rank_requirements": [r[1] for r in E.RANKS[:-1]] + [E.FOUND_COMPANY_REQUIREMENT],
-    "rank_income_mult": [r[2] for r in E.RANKS],
-    "coworker_costs": [c[1] for c in E.COWORKERS],
-    "coworker_income": [c[2] for c in E.COWORKERS],
+    "rank_income_mult": [r[1] for r in E.RANKS],
+    "goal_level": [g[0] for g in E.GOALS],
+    "goal_count": [g[1] for g in E.GOALS],
+    "hire_base_cost": E.HIRE_BASE_COST,
+    "level_income": [lv[1] for lv in E.LEVELS],
+    "hire_growth": E.HIRE_GROWTH,
+    "starting_team": E.STARTING_TEAM,
+    "actions_per_day": E.ACTIONS_PER_DAY,
+    "actions_ad_bonus": E.ACTIONS_AD_BONUS,
+    "fill_s": E.FILL_S,
+    "pc_fill_speedup": E.PC_FILL_SPEEDUP,
+    "fire_severance_s": E.FIRE_SEVERANCE_S,
+    "coffee_bonus": E.COFFEE_BONUS,
+    "desk_mult": E.DESK_MULT,
+    "xp_per_promotion": E.XP_PER_PROMOTION,
+    "offline_efficiency": E.OFFLINE_EFFICIENCY,
+    "board_cols": E.BOARD_COLS,
+    "board_rows_base": E.BOARD_ROWS_BASE,
+    "minigame_keys": [m[0] for m in E.MINIGAMES],
+    "minigame_unlock_rank": [m[1] for m in E.MINIGAMES],
+    "minigame_base_seconds": [m[2] for m in E.MINIGAMES],
+    "minigame_difficulty_mult": list(E.MINIGAME_DIFFICULTY_MULT),
+    "minigame_cooldown_s": E.MINIGAME_COOLDOWN_S,
+    "minigame_basis_per_mult": E.MINIGAME_BASIS_PER_MULT,
 }
 with open(OUT, "w") as f:
     json.dump({"constants": constants, "cases": cases}, f, indent=1)
